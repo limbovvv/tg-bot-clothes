@@ -9,7 +9,7 @@ from fastapi import HTTPException
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -17,6 +17,7 @@ from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.config import settings
+from backend.app.core.time import utcnow
 from backend.app.db.session import get_session
 from backend.app.models.broadcast import Broadcast
 from backend.app.models.entry import Entry
@@ -256,6 +257,71 @@ async def dashboard(
         format_date_only=format_date_only,
         csrf=get_csrf_token(request),
     )
+
+
+@router.get("/broadcasts/active")
+async def broadcasts_active(
+    request: Request,
+    user: str = Depends(login_required),
+    session: AsyncSession = Depends(get_session),
+):
+    rows = (
+        await session.execute(
+            select(Broadcast)
+            .where(Broadcast.sent_at.is_(None), Broadcast.is_cancelled.is_(False))
+            .order_by(Broadcast.created_at.desc())
+        )
+    ).scalars().all()
+    segment_labels = {
+        BroadcastSegment.all_bot_users: "Всем пользователям в боте",
+        BroadcastSegment.approved_in_active_giveaway: "Одобренным в активном розыгрыше",
+        BroadcastSegment.subscribed_verified: "Всем пользователям в канале",
+    }
+    payload_labels = {
+        BroadcastPayloadType.text: "Текст",
+        BroadcastPayloadType.photo: "Фото",
+        BroadcastPayloadType.video: "Видео",
+        BroadcastPayloadType.document: "Документ",
+        BroadcastPayloadType.video_note: "Кружок",
+    }
+    items = [
+        {
+            "id": b.id,
+            "segment": segment_labels.get(b.segment, b.segment.value),
+            "payload_type": payload_labels.get(b.payload_type, b.payload_type.value),
+            "sent_ok": b.sent_ok,
+            "sent_fail": b.sent_fail,
+            "created_at": b.created_at.isoformat(),
+            "started_at": b.started_at.isoformat() if b.started_at else None,
+        }
+        for b in rows
+    ]
+    return JSONResponse({"items": items})
+
+
+@router.post("/broadcasts/{broadcast_id}/stop")
+async def broadcasts_stop(
+    request: Request,
+    broadcast_id: int,
+    user: str = Depends(login_required),
+    session: AsyncSession = Depends(get_session),
+):
+    csrf_token = request.headers.get("x-csrf-token") or ""
+    if csrf_token:
+        verify_csrf(request, csrf_token)
+    broadcast = await session.get(Broadcast, broadcast_id)
+    if broadcast and broadcast.sent_at is None and not broadcast.is_cancelled:
+        broadcast.is_cancelled = True
+        broadcast.cancelled_at = utcnow()
+        broadcast.sent_at = utcnow()
+        await log_action(
+            session,
+            actor_tg_id=0,
+            action="broadcast_cancel_web",
+            payload={"broadcast_id": broadcast_id},
+        )
+        await session.commit()
+    return JSONResponse({"ok": True})
 
 
 @router.get("/admins")

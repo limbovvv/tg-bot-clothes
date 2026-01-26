@@ -57,5 +57,70 @@
       </div>
     </div>
   </div>
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="text-muted">Активные рассылки</div>
+          <div class="small text-muted">Обновление каждые 20 сек</div>
+        </div>
+        <div id="active-broadcasts" class="d-flex flex-column gap-2">
+          <div class="text-muted small">Нет активных рассылок</div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+<script>
+  const csrfToken = "{{ csrf }}";
+  const activeWrap = document.getElementById("active-broadcasts");
+
+  function renderBroadcasts(items) {
+    if (!items || items.length === 0) {
+      activeWrap.innerHTML = '<div class="text-muted small">Нет активных рассылок</div>';
+      return;
+    }
+    const html = items
+      .map((item) => {
+        return `
+          <div class="border rounded p-2">
+            <div class="fw-semibold">Сегмент: ${item.segment}</div>
+            <div class="small text-muted">Тип: ${item.payload_type}</div>
+            <div class="small">OK: ${item.sent_ok} | Fail: ${item.sent_fail}</div>
+            <div class="mt-2">
+              <button class="btn btn-sm btn-outline-danger" data-stop-id="${item.id}">Прекратить рассылку</button>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+    activeWrap.innerHTML = html;
+    activeWrap.querySelectorAll("[data-stop-id]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-stop-id");
+        btn.disabled = true;
+        await fetch(`/admin/broadcasts/${id}/stop`, {
+          method: "POST",
+          headers: {
+            "X-CSRF-Token": csrfToken,
+          },
+        });
+        await fetchActive();
+      });
+    });
+  }
+
+  async function fetchActive() {
+    try {
+      const res = await fetch("/admin/broadcasts/active");
+      const data = await res.json();
+      renderBroadcasts(data.items || []);
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  fetchActive();
+  setInterval(fetchActive, 20000);
+</script>
 {% endblock %}

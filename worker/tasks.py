@@ -88,13 +88,20 @@ async def _send_broadcast_async(broadcast_id: int) -> None:
             broadcast = await session.get(Broadcast, broadcast_id)
             if not broadcast:
                 return
+            if broadcast.started_at is None:
+                broadcast.started_at = utcnow()
+                await session.commit()
             recipients = await _collect_recipients(session, broadcast)
             sent_ok = 0
             sent_fail = 0
             rate = max(settings.broadcast_rate_per_sec, 1)
             delay = 1 / rate
 
-            for tg_id in recipients:
+            for idx, tg_id in enumerate(recipients, start=1):
+                if idx % 10 == 0:
+                    await session.refresh(broadcast)
+                if broadcast.is_cancelled:
+                    break
                 try:
                     await _send_payload(bot, tg_id, broadcast)
                     sent_ok += 1
@@ -133,6 +140,7 @@ async def _send_broadcast_text_async(text: str) -> None:
             )
             session.add(broadcast)
             await session.flush()
+            broadcast.started_at = utcnow()
             recipients = (
                 await session.execute(
                     select(User.tg_id).where(User.is_blocked.is_(False))
@@ -142,8 +150,12 @@ async def _send_broadcast_text_async(text: str) -> None:
             delay = 1 / rate
             sent_ok = 0
             sent_fail = 0
-            for row in recipients:
+            for idx, row in enumerate(recipients, start=1):
                 tg_id = row[0]
+                if idx % 10 == 0:
+                    await session.refresh(broadcast)
+                if broadcast.is_cancelled:
+                    break
                 try:
                     await bot.send_message(tg_id, text)
                     sent_ok += 1
@@ -182,6 +194,7 @@ async def _send_broadcast_text_exclude_async(
             )
             session.add(broadcast)
             await session.flush()
+            broadcast.started_at = utcnow()
             query = select(User.tg_id).where(User.is_blocked.is_(False))
             if exclude_tg_ids:
                 query = query.where(User.tg_id.not_in(exclude_tg_ids))
@@ -190,8 +203,12 @@ async def _send_broadcast_text_exclude_async(
             delay = 1 / rate
             sent_ok = 0
             sent_fail = 0
-            for row in recipients:
+            for idx, row in enumerate(recipients, start=1):
                 tg_id = row[0]
+                if idx % 10 == 0:
+                    await session.refresh(broadcast)
+                if broadcast.is_cancelled:
+                    break
                 try:
                     await bot.send_message(tg_id, text)
                     sent_ok += 1
