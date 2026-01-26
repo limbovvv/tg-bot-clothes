@@ -10,30 +10,48 @@
     />
   </head>
   <body class="bg-light">
-    <nav class="navbar navbar-expand-lg bg-white border-bottom">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
       <div class="container">
         <span class="navbar-brand">Admin</span>
         {% if user %}
-        <div class="ms-3 d-flex gap-2">
-          <a class="btn btn-sm btn-outline-secondary" href="/admin">Dashboard</a>
-          <a class="btn btn-sm btn-outline-secondary" href="/admin/entries">Заявки</a>
-          <a class="btn btn-sm btn-outline-secondary" href="/admin/giveaway">Розыгрыш</a>
-          <a class="btn btn-sm btn-outline-secondary" href="/admin/users">Пользователи бота</a>
-          <a class="btn btn-sm btn-outline-secondary" href="/admin/admins">Админы</a>
-        </div>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#adminNav"
+          aria-controls="adminNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
         {% endif %}
-        {% if user %}
-        <form action="/admin/logout" method="post" class="ms-auto">
-          {% if csrf %}
-          <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+        <div class="collapse navbar-collapse" id="adminNav">
+          {% if user %}
+          <div class="navbar-nav gap-2 ms-lg-3">
+            <a class="btn btn-sm btn-outline-secondary" href="/admin">Dashboard</a>
+            <a class="btn btn-sm btn-outline-secondary" href="/admin/entries">Заявки</a>
+            <a class="btn btn-sm btn-outline-secondary" href="/admin/giveaway">Розыгрыш</a>
+            <a class="btn btn-sm btn-outline-secondary" href="/admin/users">Пользователи бота</a>
+            <a class="btn btn-sm btn-outline-secondary" href="/admin/admins">Админы</a>
+          </div>
+          <form
+            action="/admin/logout"
+            method="post"
+            class="ms-lg-auto mt-2 mt-lg-0 d-grid d-lg-block"
+          >
+            {% if csrf %}
+            <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+            {% endif %}
+            <button class="btn btn-sm btn-outline-danger">Выйти</button>
+          </form>
           {% endif %}
-          <button class="btn btn-sm btn-outline-danger">Выйти</button>
-        </form>
-        {% endif %}
+        </div>
       </div>
     </nav>
     <main class="container py-4">
       {% block content %}{% endblock %}
     </main>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>
