@@ -689,9 +689,76 @@ async def broadcast_content(message: Message, state: FSMContext):
         text=text,
     )
     await state.set_state(BroadcastStates.segment)
-    await message.answer(
-        "Выберите сегмент: all_bot_users, approved_in_active_giveaway, subscribed_verified"
+    kb = InlineKeyboardBuilder()
+    kb.button(text="Всем пользователям в боте", callback_data="broadcast_segment:all_bot_users")
+    kb.button(
+        text="Всем пользователям в канале",
+        callback_data="broadcast_segment:subscribed_verified",
     )
+    kb.button(
+        text="Одобренным в активном розыгрыше",
+        callback_data="broadcast_segment:approved_in_active_giveaway",
+    )
+    kb.button(text="Назад", callback_data="broadcast_back")
+    kb.adjust(1)
+    await message.answer("Выберите сегмент:", reply_markup=kb.as_markup())
+
+
+@router.callback_query(F.data == "broadcast_back")
+async def broadcast_back(callback, state: FSMContext):
+    await state.set_state(BroadcastStates.content)
+    try:
+        await callback.message.edit_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    await callback.message.answer(
+        "Отправьте контент для рассылки (текст/фото/видео/док/кружок):"
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("broadcast_segment:"))
+async def broadcast_segment_callback(callback, state: FSMContext):
+    if not await ensure_admin(callback.message):
+        await callback.answer()
+        return
+    segment_raw = callback.data.split(":", 1)[1]
+    if segment_raw not in {"all_bot_users", "approved_in_active_giveaway", "subscribed_verified"}:
+        await callback.answer("Неверный сегмент", show_alert=True)
+        return
+    await state.update_data(segment=segment_raw)
+    data = await state.get_data()
+    segment_labels = {
+        "all_bot_users": "Всем пользователям в боте",
+        "approved_in_active_giveaway": "Одобренным в активном розыгрыше",
+        "subscribed_verified": "Всем пользователям в канале",
+    }
+    preview = (
+        "Превью рассылки:\n"
+        f"Тип: {data['payload_type']}\n"
+        f"Сегмент: {segment_labels.get(segment_raw, segment_raw)}"
+    )
+    payload_type = data["payload_type"]
+    if payload_type == BroadcastPayloadType.text:
+        await callback.message.answer(data["text"] or "")
+    elif payload_type == BroadcastPayloadType.photo:
+        await callback.message.answer_photo(data["payload_file_id"], caption=data.get("text"))
+    elif payload_type == BroadcastPayloadType.video:
+        await callback.message.answer_video(data["payload_file_id"], caption=data.get("text"))
+    elif payload_type == BroadcastPayloadType.document:
+        await callback.message.answer_document(data["payload_file_id"], caption=data.get("text"))
+    elif payload_type == BroadcastPayloadType.video_note:
+        await callback.message.answer_video_note(data["payload_file_id"])
+    kb = InlineKeyboardBuilder()
+    kb.button(text="Подтвердить", callback_data="broadcast_confirm")
+    kb.button(text="Отмена", callback_data="broadcast_cancel")
+    await callback.message.answer(preview, reply_markup=kb.as_markup())
+    await state.set_state(BroadcastStates.confirm)
+    try:
+        await callback.message.edit_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    await callback.answer()
 
 
 @router.message(BroadcastStates.segment)
@@ -704,7 +771,16 @@ async def broadcast_segment(message: Message, state: FSMContext):
         return
     await state.update_data(segment=segment_raw)
     data = await state.get_data()
-    preview = f"Превью рассылки:\nТип: {data['payload_type']}\nСегмент: {segment_raw}"
+    segment_labels = {
+        "all_bot_users": "Всем пользователям в боте",
+        "approved_in_active_giveaway": "Одобренным в активном розыгрыше",
+        "subscribed_verified": "Всем пользователям в канале",
+    }
+    preview = (
+        "Превью рассылки:\n"
+        f"Тип: {data['payload_type']}\n"
+        f"Сегмент: {segment_labels.get(segment_raw, segment_raw)}"
+    )
     payload_type = data["payload_type"]
     if payload_type == BroadcastPayloadType.text:
         await message.answer(data["text"] or "")
