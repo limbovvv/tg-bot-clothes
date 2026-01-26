@@ -773,9 +773,16 @@ async def broadcast_segment_callback(callback, state: FSMContext):
         "approved_in_active_giveaway": "Одобренным в активном розыгрыше",
         "subscribed_verified": "Всем пользователям в канале",
     }
+    payload_labels = {
+        BroadcastPayloadType.text: "Текст",
+        BroadcastPayloadType.photo: "Фото",
+        BroadcastPayloadType.video: "Видео",
+        BroadcastPayloadType.document: "Документ",
+        BroadcastPayloadType.video_note: "Кружок",
+    }
     preview = (
         "Превью рассылки:\n"
-        f"Тип: {data['payload_type']}\n"
+        f"Тип: {payload_labels.get(data['payload_type'], data['payload_type'])}\n"
         f"Сегмент: {segment_labels.get(segment_raw, segment_raw)}"
     )
     payload_type = data["payload_type"]
@@ -792,7 +799,10 @@ async def broadcast_segment_callback(callback, state: FSMContext):
     kb = InlineKeyboardBuilder()
     kb.button(text="Подтвердить", callback_data="broadcast_confirm")
     kb.button(text="Отмена", callback_data="broadcast_cancel")
-    await callback.message.answer(preview, reply_markup=kb.as_markup())
+    preview_msg = await callback.message.answer(preview, reply_markup=kb.as_markup())
+    await state.update_data(
+        preview_message_id=preview_msg.message_id, preview_chat_id=preview_msg.chat.id
+    )
     await state.set_state(BroadcastStates.confirm)
     data = await state.get_data()
     chat_id = data.get("segment_chat_id")
@@ -822,9 +832,16 @@ async def broadcast_segment(message: Message, state: FSMContext):
         "approved_in_active_giveaway": "Одобренным в активном розыгрыше",
         "subscribed_verified": "Всем пользователям в канале",
     }
+    payload_labels = {
+        BroadcastPayloadType.text: "Текст",
+        BroadcastPayloadType.photo: "Фото",
+        BroadcastPayloadType.video: "Видео",
+        BroadcastPayloadType.document: "Документ",
+        BroadcastPayloadType.video_note: "Кружок",
+    }
     preview = (
         "Превью рассылки:\n"
-        f"Тип: {data['payload_type']}\n"
+        f"Тип: {payload_labels.get(data['payload_type'], data['payload_type'])}\n"
         f"Сегмент: {segment_labels.get(segment_raw, segment_raw)}"
     )
     payload_type = data["payload_type"]
@@ -841,7 +858,10 @@ async def broadcast_segment(message: Message, state: FSMContext):
     kb = InlineKeyboardBuilder()
     kb.button(text="Подтвердить", callback_data="broadcast_confirm")
     kb.button(text="Отмена", callback_data="broadcast_cancel")
-    await message.answer(preview, reply_markup=kb.as_markup())
+    preview_msg = await message.answer(preview, reply_markup=kb.as_markup())
+    await state.update_data(
+        preview_message_id=preview_msg.message_id, preview_chat_id=preview_msg.chat.id
+    )
     await state.set_state(BroadcastStates.confirm)
 
 
@@ -873,15 +893,34 @@ async def broadcast_confirm(callback, state: FSMContext):
         await session.refresh(broadcast)
 
     celery_app.send_task("worker.tasks.send_broadcast", args=[broadcast.id])
-    await callback.message.answer("Рассылка поставлена в очередь")
+    preview_chat_id = data.get("preview_chat_id")
+    preview_message_id = data.get("preview_message_id")
+    if preview_chat_id and preview_message_id:
+        try:
+            await callback.message.bot.edit_message_reply_markup(
+                chat_id=preview_chat_id, message_id=preview_message_id, reply_markup=None
+            )
+        except Exception:
+            pass
+    await callback.message.answer("Рассылка поставлена в очередь", reply_markup=admin_menu())
     await state.clear()
     await callback.answer()
 
 
 @router.callback_query(F.data == "broadcast_cancel")
 async def broadcast_cancel(callback, state: FSMContext):
+    data = await state.get_data()
+    preview_chat_id = data.get("preview_chat_id")
+    preview_message_id = data.get("preview_message_id")
+    if preview_chat_id and preview_message_id:
+        try:
+            await callback.message.bot.edit_message_reply_markup(
+                chat_id=preview_chat_id, message_id=preview_message_id, reply_markup=None
+            )
+        except Exception:
+            pass
     await state.clear()
-    await callback.message.answer("Отменено")
+    await callback.message.answer("Отменено", reply_markup=admin_menu())
     await callback.answer()
 
 
