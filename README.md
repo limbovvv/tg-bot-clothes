@@ -1,6 +1,6 @@
 # Платформа розыгрышей в Telegram
 
-Production‑ready репозиторий: user‑bot, admin‑bot, FastAPI backend, веб‑админка, PostgreSQL, Celery, Redis, nginx, docker‑compose/podman‑compose.
+Production‑ready репозиторий: user‑bot, admin‑bot, FastAPI backend, веб‑админка, PostgreSQL, Celery, Redis, nginx, docker‑compose/podman‑compose. Почему podman? У меня не работал докер.
 
 ## Стек
 - Python 3.12
