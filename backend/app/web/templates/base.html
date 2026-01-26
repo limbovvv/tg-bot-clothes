@@ -17,16 +17,16 @@
         <button
           class="navbar-toggler"
           type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#adminNav"
-          aria-controls="adminNav"
+          data-bs-toggle="offcanvas"
+          data-bs-target="#adminOffcanvas"
+          aria-controls="adminOffcanvas"
           aria-expanded="false"
           aria-label="Toggle navigation"
         >
           <span class="navbar-toggler-icon"></span>
         </button>
         {% endif %}
-        <div class="collapse navbar-collapse" id="adminNav">
+        <div class="collapse navbar-collapse d-none d-lg-flex" id="adminNav">
           {% if user %}
           <div class="navbar-nav gap-2 ms-lg-3">
             <a class="btn btn-sm btn-outline-secondary" href="/admin">Dashboard</a>
@@ -49,6 +49,33 @@
         </div>
       </div>
     </nav>
+    {% if user %}
+    <div
+      class="offcanvas offcanvas-start"
+      tabindex="-1"
+      id="adminOffcanvas"
+      aria-labelledby="adminOffcanvasLabel"
+    >
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="adminOffcanvasLabel">Навигация</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body d-flex flex-column gap-2">
+        <a class="btn btn-outline-secondary w-100 text-start" href="/admin">Dashboard</a>
+        <a class="btn btn-outline-secondary w-100 text-start" href="/admin/entries">Заявки</a>
+        <a class="btn btn-outline-secondary w-100 text-start" href="/admin/giveaway">Розыгрыш</a>
+        <a class="btn btn-outline-secondary w-100 text-start" href="/admin/users">Пользователи бота</a>
+        <a class="btn btn-outline-secondary w-100 text-start" href="/admin/admins">Админы</a>
+        <hr />
+        <form action="/admin/logout" method="post" class="d-grid">
+          {% if csrf %}
+          <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+          {% endif %}
+          <button class="btn btn-outline-danger">Выйти</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
     <main class="container py-4">
       {% block content %}{% endblock %}
     </main>
