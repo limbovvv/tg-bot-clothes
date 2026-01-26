@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+.idea/
+.vscode/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+postgres_data/

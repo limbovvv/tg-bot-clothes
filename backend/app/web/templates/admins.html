@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block content %}
+<h3 class="mb-4">Админы</h3>
+
+<div class="row g-3">
+  <div class="col-md-4">
+    <form method="post" action="/admin/admins/create" class="card card-body">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+      <h6 class="mb-3">Добавить администратора</h6>
+      <div class="mb-2">
+        <label class="form-label">Username</label>
+        <input class="form-control" name="username" placeholder="username" required />
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Пароль</label>
+        <input class="form-control" name="password" type="password" placeholder="пароль" autocomplete="new-password" required />
+      </div>
+      <button class="btn btn-primary w-100">Добавить</button>
+    </form>
+  </div>
+
+  <div class="col-md-8">
+    <div class="card card-body">
+      <h6 class="mb-3">Список администраторов</h6>
+      <table class="table table-sm table-bordered bg-white mb-0">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Активен</th>
+            <th>Создан</th>
+            <th>Последний вход</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for admin in admins %}
+          <tr>
+            <td>{{ admin.id }}</td>
+            <td>{{ admin.username }}</td>
+            <td>{{ 'да' if admin.is_active else 'нет' }}</td>
+            <td>{{ admin.created_at.strftime('%d.%m.%Y %H:%M') if admin.created_at else '-' }}</td>
+            <td>{{ admin.last_login_at.strftime('%d.%m.%Y %H:%M') if admin.last_login_at else '-' }}</td>
+            <td>
+              <div class="d-flex flex-column gap-1">
+                <form method="post" action="/admin/admins/{{ admin.id }}/toggle">
+                  <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+                  <button class="btn btn-sm btn-outline-success w-100">
+                    {{ 'Отключить' if admin.is_active else 'Включить' }}
+                  </button>
+                </form>
+                <button
+                  class="btn btn-sm btn-outline-secondary w-100 js-open-reset"
+                  data-admin-id="{{ admin.id }}"
+                  data-username="{{ admin.username }}"
+                >
+                  Изменить пароль
+                </button>
+                <form method="post" action="/admin/admins/{{ admin.id }}/delete">
+                  <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+                  <button class="btn btn-sm btn-outline-danger w-100">Удалить</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="modal-backdrop" class="modal-backdrop-custom d-none"></div>
+<div id="reset-modal" class="modal-custom d-none" role="dialog" aria-modal="true">
+  <div class="modal-card">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="mb-0">Изменить пароль</h6>
+      <button class="btn btn-sm btn-outline-secondary js-close-reset">×</button>
+    </div>
+    <div class="text-muted small mb-2">Админ: <span id="reset-username">—</span></div>
+    <form method="post" id="reset-form" action="">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+      <div class="mb-2">
+        <input
+          class="form-control"
+          name="new_password"
+          type="password"
+          placeholder="новый пароль"
+          autocomplete="new-password"
+          required
+        />
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-success w-100">Изменить</button>
+        <button type="button" class="btn btn-secondary w-100 js-close-reset">Отмена</button>
+      </div>
+    </form>
+    <div class="text-muted small mt-2">
+      Или <strong>сбросить</strong> пароль на <strong>12345</strong>.
+    </div>
+    <form method="post" id="reset-default-form" action="" class="mt-2">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+      <button class="btn btn-danger w-100">Сбросить на 12345</button>
+    </form>
+  </div>
+</div>
+
+<style>
+  .modal-backdrop-custom {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 1040;
+  }
+  .modal-custom {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+  }
+  .modal-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    width: 360px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  }
+  .d-none { display: none !important; }
+</style>
+
+<script>
+  (function () {
+    const backdrop = document.getElementById("modal-backdrop");
+    const modal = document.getElementById("reset-modal");
+    const resetForm = document.getElementById("reset-form");
+    const resetDefaultForm = document.getElementById("reset-default-form");
+    const resetUsername = document.getElementById("reset-username");
+
+    function openModal(adminId, username) {
+      resetForm.action = `/admin/admins/${adminId}/reset`;
+      resetDefaultForm.action = `/admin/admins/${adminId}/reset-default`;
+      resetUsername.textContent = username || "-";
+      backdrop.classList.remove("d-none");
+      modal.classList.remove("d-none");
+    }
+    function closeModal() {
+      backdrop.classList.add("d-none");
+      modal.classList.add("d-none");
+    }
+
+    document.querySelectorAll(".js-open-reset").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        openModal(btn.dataset.adminId, btn.dataset.username);
+      });
+    });
+    document.querySelectorAll(".js-close-reset").forEach((btn) => {
+      btn.addEventListener("click", closeModal);
+    });
+    backdrop.addEventListener("click", closeModal);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeModal();
+    });
+  })();
+</script>
+{% endblock %}

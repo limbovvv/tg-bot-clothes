@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<h3 class="mb-4">{{ title }}</h3>
+
+<form method="get" class="card card-body mb-3">
+  <div class="row g-2 align-items-center">
+    <div class="col-md-8">
+      <input class="form-control" name="q" placeholder="Поиск по username или tg_id" value="{{ q }}" />
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-primary w-100">Найти</button>
+    </div>
+    <div class="col-md-2">
+      <a class="btn btn-outline-secondary w-100" href="/admin/users">Сброс</a>
+    </div>
+  </div>
+</form>
+
+<table class="table table-sm table-bordered bg-white">
+  <thead>
+    <tr>
+      <th>tg_id</th>
+      <th>username</th>
+      <th>Первый вход</th>
+      <th>Последний вход</th>
+      <th>Подписка подтверждена</th>
+      <th>Заблокировал бота</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+    <tr>
+      <td>{{ u.tg_id }}</td>
+      <td>{{ u.username or '-' }}</td>
+      <td>{{ u.first_seen_at.strftime('%d.%m.%Y %H:%M') if u.first_seen_at else '-' }}</td>
+      <td>{{ u.last_seen_at.strftime('%d.%m.%Y %H:%M') if u.last_seen_at else '-' }}</td>
+      <td>{{ u.subscribed_verified_at.strftime('%d.%m.%Y %H:%M') if u.subscribed_verified_at else '-' }}</td>
+      <td>{{ 'да' if u.is_blocked else 'нет' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

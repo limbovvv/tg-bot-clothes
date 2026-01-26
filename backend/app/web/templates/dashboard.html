@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<h3 class="mb-4">Dashboard</h3>
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <div class="text-muted">Пользователи</div>
+        <div class="mt-2 d-flex flex-column gap-1">
+          <div class="fs-5">
+            <span class="text-muted">Подписаны на бота:</span>
+            <span class="fw-semibold">{{ users_total }}</span>
+          </div>
+          <div class="fs-5">
+            <span class="text-muted">Подписаны на канал:</span>
+            <span class="fw-semibold">{{ channel_members if channel_members is not none else '-' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <div class="text-muted">Рассылки</div>
+        <div class="fs-6">OK: {{ sent_ok }} | Fail: {{ sent_fail }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <div class="text-muted">Активный розыгрыш</div>
+        {% if giveaway %}
+        <div class="fs-5">{{ giveaway.title }}</div>
+        <div class="text-muted">Канал: {{ giveaway.required_channel }}</div>
+        <div class="text-muted">Дата: {{ format_date_only(giveaway.draw_at) or 'не указана' }}</div>
+        <div class="text-muted">
+          Статус:
+          {% if giveaway.status.value == 'active' %}
+            Активен
+          {% elif giveaway.status.value == 'closed' %}
+            Закрыт
+          {% else %}
+            {{ giveaway.status.value }}
+          {% endif %}
+        </div>
+        <div class="text-muted">Создан: {{ giveaway.created_at.strftime('%d.%m.%Y') if giveaway.created_at else '-' }}</div>
+        <div class="mt-2">На проверке: {{ pending }} | Одобрено: {{ approved }} | Отклонено: {{ rejected }}</div>
+        <div class="mt-2">
+          <div class="text-muted">Правила:</div>
+          <div class="small">{{ giveaway.rules_text }}</div>
+        </div>
+        {% else %}
+        <div class="fs-6">Нет активного</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

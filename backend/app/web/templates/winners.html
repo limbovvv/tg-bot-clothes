@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<h3 class="mb-4">Победители</h3>
+<form method="post" action="/admin/winners/draw" class="row g-2 mb-3">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+  <div class="col-md-2">
+    <input class="form-control" name="count" value="1" />
+  </div>
+  <div class="col-md-2">
+    <button class="btn btn-primary">Выбрать победителя</button>
+  </div>
+</form>
+<table class="table table-sm table-bordered bg-white">
+  <thead>
+    <tr>
+      <th>Дата</th>
+      <th>Entry</th>
+      <th>Username</th>
+      <th>ФИО</th>
+      <th>Телефон</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for winner in winners %}
+    {% set entry = entries[winner.entry_id] %}
+    {% set user = users[winner.entry_id] %}
+    <tr>
+      <td>{{ winner.chosen_at }}</td>
+      <td>{{ entry.id }}</td>
+      <td>@{{ user.username }}</td>
+      <td>{{ entry.fio }}</td>
+      <td>{{ entry.phone }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

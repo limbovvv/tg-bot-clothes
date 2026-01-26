@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<h3 class="mb-4">Рассылки</h3>
+<form method="post" action="/admin/broadcasts/create" class="card card-body mb-3">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+  <div class="mb-2">
+    <label class="form-label">Сегмент</label>
+    <select class="form-select" name="segment">
+      <option value="all_bot_users">all_bot_users</option>
+      <option value="approved_in_active_giveaway">approved_in_active_giveaway</option>
+      <option value="subscribed_verified">subscribed_verified</option>
+    </select>
+  </div>
+  <div class="mb-2">
+    <label class="form-label">Тип контента</label>
+    <select class="form-select" name="payload_type">
+      <option value="text">text</option>
+      <option value="photo">photo</option>
+      <option value="video">video</option>
+      <option value="document">document</option>
+      <option value="video_note">video_note</option>
+    </select>
+  </div>
+  <div class="mb-2">
+    <label class="form-label">File ID (если нужен)</label>
+    <input class="form-control" name="payload_file_id" />
+  </div>
+  <div class="mb-2">
+    <label class="form-label">Текст/подпись</label>
+    <textarea class="form-control" name="text" rows="3"></textarea>
+  </div>
+  <button class="btn btn-primary">Отправить</button>
+</form>
+<table class="table table-sm table-bordered bg-white">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Тип</th>
+      <th>Сегмент</th>
+      <th>OK</th>
+      <th>Fail</th>
+      <th>Отправлено</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for b in broadcasts %}
+    <tr>
+      <td>{{ b.id }}</td>
+      <td>{{ b.payload_type }}</td>
+      <td>{{ b.segment }}</td>
+      <td>{{ b.sent_ok }}</td>
+      <td>{{ b.sent_fail }}</td>
+      <td>{{ b.sent_at }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

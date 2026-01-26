@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h3 class="mb-4">{{ title }}</h3>
+
+<div class="card card-body">
+  {% if error %}
+    <div class="text-danger mb-2">{{ error }}</div>
+  {% endif %}
+  <div class="text-muted">Список участников через API получить нельзя. Доступно только количество.</div>
+  <div class="fs-5 mt-2">
+    Участников в канале: <span class="fw-semibold">{{ members if members is not none else '-' }}</span>
+  </div>
+</div>
+{% endblock %}

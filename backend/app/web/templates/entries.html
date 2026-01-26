@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<h3 class="mb-4">Заявки</h3>
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-3">
+    <select class="form-select" name="status">
+      <option value="">Все статусы</option>
+      <option value="pending">pending</option>
+      <option value="approved">approved</option>
+      <option value="rejected">rejected</option>
+    </select>
+  </div>
+  <div class="col-md-4">
+    <input class="form-control" name="q" placeholder="Поиск по ФИО/телефону" />
+  </div>
+  <div class="col-md-2">
+    <button class="btn btn-outline-primary">Фильтр</button>
+  </div>
+</form>
+<table class="table table-sm table-bordered bg-white">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>ФИО</th>
+      <th>Телефон</th>
+      <th>Username</th>
+      <th>Скриншот</th>
+      <th>Статус</th>
+      <th>Действие</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for entry in entries %}
+    {% set user = users[entry.id] %}
+    <tr>
+      <td>{{ entry.id }}</td>
+      <td>{{ entry.fio }}</td>
+      <td>{{ entry.phone }}</td>
+      <td>@{{ user.username }}</td>
+      <td>{{ entry.screenshot_file_id }}</td>
+      <td>{{ entry.status }}</td>
+      <td class="d-flex gap-2">
+        <form method="post" action="/admin/entries/{{ entry.id }}/approve">
+          <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+          <button class="btn btn-sm btn-success">Одобрить</button>
+        </form>
+        <form method="post" action="/admin/entries/{{ entry.id }}/reject">
+          <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+          <input class="form-control form-control-sm mb-1" name="reason" placeholder="Причина" />
+          <button class="btn btn-sm btn-danger">Отклонить</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
