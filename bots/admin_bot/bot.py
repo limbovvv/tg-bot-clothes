@@ -712,16 +712,44 @@ async def broadcast_content(message: Message, state: FSMContext):
     )
     kb.button(text="Назад", callback_data="broadcast_back")
     kb.adjust(1)
-    await message.answer("Выберите сегмент:", reply_markup=kb.as_markup())
+    sent = await message.answer("Выберите сегмент:", reply_markup=kb.as_markup())
+    await state.update_data(segment_message_id=sent.message_id, segment_chat_id=sent.chat.id)
+
+
+@router.message(BroadcastStates.segment, F.text == "⬅️ Назад")
+async def broadcast_segment_back(message: Message, state: FSMContext):
+    if not await ensure_admin(message):
+        return
+    data = await state.get_data()
+    chat_id = data.get("segment_chat_id")
+    message_id = data.get("segment_message_id")
+    if chat_id and message_id:
+        try:
+            await message.bot.edit_message_reply_markup(
+                chat_id=chat_id, message_id=message_id, reply_markup=None
+            )
+        except Exception:
+            pass
+    await state.set_state(BroadcastStates.content)
+    await message.answer(
+        "Отправьте контент для рассылки (текст/фото/видео/док/кружок):",
+        reply_markup=back_only_menu(),
+    )
 
 
 @router.callback_query(F.data == "broadcast_back")
 async def broadcast_back(callback, state: FSMContext):
     await state.set_state(BroadcastStates.content)
-    try:
-        await callback.message.edit_reply_markup(reply_markup=None)
-    except Exception:
-        pass
+    data = await state.get_data()
+    chat_id = data.get("segment_chat_id")
+    message_id = data.get("segment_message_id")
+    if chat_id and message_id:
+        try:
+            await callback.message.bot.edit_message_reply_markup(
+                chat_id=chat_id, message_id=message_id, reply_markup=None
+            )
+        except Exception:
+            pass
     await callback.message.answer(
         "Отправьте контент для рассылки (текст/фото/видео/док/кружок):",
         reply_markup=back_only_menu(),
@@ -766,10 +794,16 @@ async def broadcast_segment_callback(callback, state: FSMContext):
     kb.button(text="Отмена", callback_data="broadcast_cancel")
     await callback.message.answer(preview, reply_markup=kb.as_markup())
     await state.set_state(BroadcastStates.confirm)
-    try:
-        await callback.message.edit_reply_markup(reply_markup=None)
-    except Exception:
-        pass
+    data = await state.get_data()
+    chat_id = data.get("segment_chat_id")
+    message_id = data.get("segment_message_id")
+    if chat_id and message_id:
+        try:
+            await callback.message.bot.edit_message_reply_markup(
+                chat_id=chat_id, message_id=message_id, reply_markup=None
+            )
+        except Exception:
+            pass
     await callback.answer()
 
 
