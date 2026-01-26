@@ -650,7 +650,18 @@ async def broadcast_start(message: Message, state: FSMContext):
     if not await ensure_admin(message):
         return
     await state.set_state(BroadcastStates.content)
-    await message.answer("Отправьте контент для рассылки (текст/фото/видео/док/кружок):")
+    await message.answer(
+        "Отправьте контент для рассылки (текст/фото/видео/док/кружок):",
+        reply_markup=back_only_menu(),
+    )
+
+
+@router.message(BroadcastStates.content, F.text == "⬅️ Назад")
+async def broadcast_content_back(message: Message, state: FSMContext):
+    if not await ensure_admin(message):
+        return
+    await state.clear()
+    await message.answer("Отменено", reply_markup=admin_menu())
 
 
 @router.message(BroadcastStates.content)
@@ -712,7 +723,8 @@ async def broadcast_back(callback, state: FSMContext):
     except Exception:
         pass
     await callback.message.answer(
-        "Отправьте контент для рассылки (текст/фото/видео/док/кружок):"
+        "Отправьте контент для рассылки (текст/фото/видео/док/кружок):",
+        reply_markup=back_only_menu(),
     )
     await callback.answer()
 
