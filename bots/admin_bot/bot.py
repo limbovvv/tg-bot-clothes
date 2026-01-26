@@ -358,7 +358,7 @@ async def giveaway_edit(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "giveaway_edit_rules")
 async def giveaway_edit_rules_cb(callback, state: FSMContext):
-    if not await ensure_admin(callback.message):
+    if not await is_admin_user(callback.from_user):
         return
     await callback.answer()
     await state.update_data(edit_choice="rules")
@@ -368,7 +368,7 @@ async def giveaway_edit_rules_cb(callback, state: FSMContext):
 
 @router.callback_query(F.data == "giveaway_edit_channel")
 async def giveaway_edit_channel_cb(callback, state: FSMContext):
-    if not await ensure_admin(callback.message):
+    if not await is_admin_user(callback.from_user):
         return
     await callback.answer()
     await state.update_data(edit_choice="channel")
@@ -380,7 +380,7 @@ async def giveaway_edit_channel_cb(callback, state: FSMContext):
 
 @router.callback_query(F.data == "giveaway_edit_draw_at")
 async def giveaway_edit_draw_at_cb(callback, state: FSMContext):
-    if not await ensure_admin(callback.message):
+    if not await is_admin_user(callback.from_user):
         return
     await callback.answer()
     await state.update_data(edit_choice="draw_at")
@@ -731,7 +731,7 @@ async def broadcast_back(callback, state: FSMContext):
 
 @router.callback_query(F.data.startswith("broadcast_segment:"))
 async def broadcast_segment_callback(callback, state: FSMContext):
-    if not await ensure_admin(callback.message):
+    if not await is_admin_user(callback.from_user):
         await callback.answer()
         return
     segment_raw = callback.data.split(":", 1)[1]
