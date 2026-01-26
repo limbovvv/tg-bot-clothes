@@ -1,8 +1,8 @@
-# Telegram Giveaway Platform
+# Платформа розыгрышей в Telegram
 
-Production-ready monorepo: user bot, admin bot, FastAPI backend, admin web, PostgreSQL, Celery worker, Redis, nginx, docker-compose.
+Production‑ready репозиторий: user‑bot, admin‑bot, FastAPI backend, веб‑админка, PostgreSQL, Celery, Redis, nginx, docker‑compose/podman‑compose.
 
-## Stack
+## Стек
 - Python 3.12
 - aiogram v3 (FSM)
 - FastAPI + Uvicorn
@@ -10,37 +10,43 @@ Production-ready monorepo: user bot, admin bot, FastAPI backend, admin web, Post
 - Celery + Redis
 - nginx
 
-## Repository layout
-- `backend/` FastAPI app (admin web)
-- `bots/user_bot/` User bot
-- `bots/admin_bot/` Admin bot
-- `worker/` Celery worker
-- `db/` Alembic migrations
-- `deploy/` nginx + backup script
-- `scripts/` helper scripts
+## Структура проекта
+- `backend/` — FastAPI приложение + веб‑админка
+- `bots/user_bot/` — пользовательский бот
+- `bots/admin_bot/` — админ‑бот
+- `worker/` — Celery воркер
+- `db/` — Alembic миграции
+- `deploy/` — nginx + скрипт бэкапа
+- `scripts/` — утилиты
 
-## Quick start (local)
-1. Copy env:
-   ```bash
-   cp .env.example .env
-   ```
-2. Fill required values in `.env` (tokens, admin ids, channel).
-3. Build and run:
-   ```bash
-   make up
-   ```
-4. Open admin web:
-   - http://localhost:8000/admin (direct)
-   - http://localhost/ (via nginx)
-
-## Admin users
-Create admin in DB (after services are up and migrations applied):
+## Быстрый запуск (локально)
+1) Скопировать env:
 ```bash
-podman exec -it tgbotclothes_backend_1 python scripts/create_admin.py --username admin --password CHANGE_ME
+cp .env.example .env
 ```
+2) Заполнить `.env` (токены, канал, группа, секреты).
+3) Запуск:
+```bash
+podman-compose up -d --build
+```
+4) Применить миграции:
+```bash
+podman-compose exec backend alembic -c db/alembic.ini upgrade head
+```
+5) Открыть админку:
+- напрямую: `http://localhost:8000/admin`
+- через nginx: `http://localhost:8080/admin`
 
-## ENV variables
-See `.env.example` for full list. Required:
+## Создание админа для веб‑панели
+```bash
+podman-compose exec backend python /app/scripts/create_admin.py \
+  --username YOUR_LOGIN --password YOUR_PASSWORD
+```
+Логин — **без @**.
+
+## Переменные окружения
+Полный список — в `.env.example`.
+Критично заполнить:
 - `USER_BOT_TOKEN`
 - `ADMIN_BOT_TOKEN`
 - `ADMIN_GROUP_ID`
@@ -48,57 +54,64 @@ See `.env.example` for full list. Required:
 - `PUBLIC_CHANNEL`
 - `SESSION_SECRET`
 
-## Bots setup
-- Add **user bot** to the admin group and grant permission to send messages.
-- Add **admin bot** to the public channel as admin.
-- Ensure the required channel is public and the user bot is admin in it for membership checks.
+## Настройка Telegram
+- **User‑bot** должен быть админом в публичном канале (для проверки подписки).
+- **User‑bot** должен быть добавлен в админ‑группу (чтобы постить заявки на модерацию).
+- **Admin‑bot** администрирует канал/группу, где нужны уведомления.
 
-## Admin web
-- Login at `/admin/login`.
-- Sections: Dashboard, Entries, Giveaway, Winners, Broadcasts.
+## Веб‑админка
+Разделы: Dashboard, Заявки, Розыгрыш, Пользователи бота, Админы.
+Мобильное меню — через выезжающую боковую панель (offcanvas).
 
-## Broadcasts
-- All broadcasts are processed by Celery worker.
-- Rate limit is controlled by `BROADCAST_RATE_PER_SEC`.
+## Рассылки
+- Отправка выполняется через Celery.
+- Скорость регулируется `BROADCAST_RATE_PER_SEC`.
 
-## Draw winners
-- Winners are chosen only among approved entries with username.
-- Public post format: `Winner: @username`.
-- Broadcast to all bot users is triggered automatically.
-
-## Migrations
-Run manually:
+## Миграции
 ```bash
-make migrate
+podman-compose exec backend alembic -c db/alembic.ini upgrade head
 ```
 
-## Backup
+## Бэкап PostgreSQL
 ```bash
-make backup
+./deploy/backup.sh
 ```
-Output file is written to current directory.
+Файл будет в текущей папке.
 
-## Update / deploy
-- Pull new code, update `.env` if needed, then:
-  ```bash
-  make up
-  ```
+## Обновление на сервере
+```bash
+cd ~/tg-bot-clothes
+git pull
+podman-compose up -d --build
+podman-compose exec backend alembic -c db/alembic.ini upgrade head
+```
+
+Если обновлялась только веб‑часть, можно пересобрать только backend:
+```bash
+podman-compose up -d --build backend
+```
+
+Если нужно, чтобы контейнер backend точно обновился:
+```bash
+podman stop tg-bot-clothes_backend_1
+podman rm tg-bot-clothes_backend_1
+podman-compose up -d backend
+```
 
 ## HTTPS (nginx + certbot)
-Example steps on server:
+Пример для сервера:
 ```bash
-sudo apt-get install certbot python3-certbot-nginx
+sudo apt install certbot python3-certbot-nginx
 sudo certbot --nginx -d your-domain.com
 ```
-Update `deploy/nginx.conf` with your domain and reload nginx.
 
 ## Troubleshooting
-- Check logs: `make logs`
-- Ensure bots are admins where required.
-- Verify DB/Redis health in docker compose.
+- Логи: `podman-compose logs -f --tail=200`
+- Проверка статуса: `podman-compose ps`
+- Если не открывается админка — проверь, что открыт порт 8080 в firewall/security‑group.
 
-## Tests
+## Тесты
 ```bash
 pytest -q
 ```
-`test_migrations_apply` requires `DATABASE_URL` to point to a running Postgres.
+Тест `test_migrations_apply` требует доступную БД.
