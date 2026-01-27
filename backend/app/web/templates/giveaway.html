@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 <h3 class="mb-4">Розыгрыш</h3>
+{% if auto_error_msg %}
+<div class="alert alert-danger" role="alert">{{ auto_error_msg }}</div>
+{% endif %}
 <div id="auto-card" class="card card-body mb-4 auto-card">
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h5 class="mb-0">Автоматический розыгрыш</h5>

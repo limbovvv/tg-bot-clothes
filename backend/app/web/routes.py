@@ -634,10 +634,16 @@ async def giveaway_view(
     )
     next_run_at_msk = next_run_at.astimezone(MSK_TZ)
     auto_saved = request.query_params.get("auto_saved") == "1"
+    auto_error = request.query_params.get("auto_error") == "1"
     auto_overlay = automation.is_enabled and giveaway is None and next_run_at > now
     start_at_msk = automation.start_at.astimezone(MSK_TZ) if automation.start_at else None
     start_hour_value = start_at_msk.strftime("%H") if start_at_msk else "03"
     start_minute_value = start_at_msk.strftime("%M") if start_at_msk else "05"
+    auto_error_msg = (
+        "Это время уже прошло. Выберите дату и время старта в будущем."
+        if auto_error
+        else ""
+    )
     await session.commit()
     return render(
         "giveaway.html",
@@ -646,6 +652,7 @@ async def giveaway_view(
         giveaway=giveaway,
         automation=automation,
         auto_saved=auto_saved,
+        auto_error_msg=auto_error_msg,
         auto_overlay=auto_overlay,
         next_run_at_iso=next_run_at.isoformat(),
         next_run_at_label=next_run_at_msk.strftime("%d.%m.%Y %H:%M МСК"),
@@ -786,6 +793,9 @@ async def giveaway_automation_update(
             day_of_month = start_dt.day
         except ValueError:
             start_dt = None
+    now = utcnow()
+    if is_enabled and (not start_dt or start_dt <= now):
+        return RedirectResponse(url="/admin/giveaway?auto_error=1", status_code=302)
     settings_row = await update_automation_settings(
         session,
         is_enabled=is_enabled,
