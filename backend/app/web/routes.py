@@ -644,13 +644,14 @@ async def giveaway_view(
     auto_saved = request.query_params.get("auto_saved") == "1"
     auto_error = request.query_params.get("auto_error") == "1"
     create_error = request.query_params.get("create_error") == "1"
-    auto_overlay = automation.is_enabled
+    auto_overlay = automation.is_enabled and not auto_error
     has_active_giveaway = giveaway is not None
     overlay_target_at = next_run_at
     overlay_is_active = False
     if giveaway and giveaway.draw_at:
         overlay_target_at = giveaway.draw_at
         overlay_is_active = True
+    overlay_can_disable = automation.is_enabled and not overlay_is_active
     overlay_target_msk = overlay_target_at.astimezone(MSK_TZ)
     start_at_msk = automation.start_at.astimezone(MSK_TZ) if automation.start_at else None
     start_hour_value = start_at_msk.strftime("%H") if start_at_msk else "03"
@@ -693,6 +694,7 @@ async def giveaway_view(
         overlay_target_iso=overlay_target_at.isoformat(),
         overlay_target_label=overlay_target_msk.strftime("%d.%m.%Y %H:%M МСК"),
         overlay_is_active=overlay_is_active,
+        overlay_can_disable=overlay_can_disable,
         start_date_value=start_at_msk.strftime("%d.%m.%Y") if start_at_msk else "",
         start_time_value=f"{start_hour_value}:{start_minute_value}",
         start_hour_value=start_hour_value,

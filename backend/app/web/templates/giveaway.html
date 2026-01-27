@@ -102,6 +102,12 @@
         <button class="btn btn-outline-danger">Отменить розыгрыш</button>
       </form>
       {% endif %}
+      {% if overlay_can_disable %}
+      <form method="post" action="/admin/giveaway/automation/disable" class="d-grid">
+        <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+        <button class="btn btn-outline-secondary">Выключить авто-режим</button>
+      </form>
+      {% endif %}
       <div id="auto-started" class="auto-started d-none">Розыгрыш начался</div>
     </div>
   </div>
