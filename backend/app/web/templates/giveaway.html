@@ -92,8 +92,11 @@
         <input class="form-control" name="required_channel" value="{{ automation.required_channel }}" placeholder="@channel" />
       </div>
       <div class="col-12">
-        <label class="form-label">Название (можно использовать {month}, {month_name}, {year})</label>
+        <label class="form-label">Название (шаблон)</label>
         <input class="form-control" name="title_template" value="{{ automation.title_template }}" />
+        <div class="form-text">
+          Можно использовать: номер месяца, название месяца, год. Пример: «Розыгрыш январь 2026».
+        </div>
       </div>
       <div class="col-12">
         <label class="form-label">Правила</label>
