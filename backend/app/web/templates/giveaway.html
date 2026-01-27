@@ -75,6 +75,11 @@
       <div class="text-muted small mb-1">Автоматический розыгрыш</div>
       <div id="auto-countdown" class="auto-countdown">--:--:--</div>
       <div class="text-muted small mb-3">Старт: {{ next_run_at_label }}</div>
+      {% if has_active_giveaway %}
+      <div class="alert alert-warning py-2 small" role="alert">
+        Сейчас есть активный розыгрыш. Авто-старт начнется после его завершения.
+      </div>
+      {% endif %}
       <form method="post" action="/admin/giveaway/automation/disable" class="d-grid">
         <input type="hidden" name="csrf_token" value="{{ csrf }}" />
         <button class="btn btn-outline-danger">Отменить</button>
