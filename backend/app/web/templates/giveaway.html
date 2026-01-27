@@ -20,8 +20,8 @@
     <div class="row g-2">
       <div class="col-md-4">
         <label class="form-label">Дата старта (МСК)</label>
-        <input class="form-control" type="date" name="start_date" value="{{ start_date_value }}" />
-        <div class="form-text">Выберите дату в календаре.</div>
+        <input class="form-control" name="start_date" value="{{ start_date_value }}" placeholder="ДД.ММ.ГГГГ" inputmode="numeric" />
+        <div class="form-text">Формат: сначала день, потом месяц, потом год.</div>
       </div>
       <div class="col-md-4">
         <label class="form-label">Время старта (МСК, 24 часа)</label>

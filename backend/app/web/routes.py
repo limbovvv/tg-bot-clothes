@@ -649,7 +649,7 @@ async def giveaway_view(
         auto_overlay=auto_overlay,
         next_run_at_iso=next_run_at.isoformat(),
         next_run_at_label=next_run_at_msk.strftime("%d.%m.%Y %H:%M МСК"),
-        start_date_value=start_at_msk.strftime("%Y-%m-%d") if start_at_msk else "",
+        start_date_value=start_at_msk.strftime("%d.%m.%Y") if start_at_msk else "",
         start_time_value=f"{start_hour_value}:{start_minute_value}",
         start_hour_value=start_hour_value,
         start_minute_value=start_minute_value,
@@ -778,8 +778,9 @@ async def giveaway_automation_update(
     start_dt = None
     if start_date:
         try:
-            start_iso = f"{start_date}T{start_time or '00:05'}"
-            start_local = datetime.fromisoformat(start_iso)
+            date_part = datetime.strptime(start_date, "%d.%m.%Y")
+            time_part = datetime.strptime(start_time or "00:05", "%H:%M").time()
+            start_local = datetime.combine(date_part.date(), time_part)
             start_dt = start_local.replace(tzinfo=MSK_TZ).astimezone(timezone.utc)
             # Keep monthly rollover aligned with the chosen start date.
             day_of_month = start_dt.day
