@@ -307,6 +307,58 @@ def _month_run_at(day_of_month: int, now: datetime) -> datetime:
     return candidate
 
 
+def _parse_admin_ids(raw: str) -> list[int]:
+    ids: list[int] = []
+    for part in (raw or "").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            ids.append(int(part))
+        except ValueError:
+            continue
+    return ids
+
+
+async def _announce_start(giveaway: Giveaway) -> None:
+    channel_text = (
+        "🎉 Розыгрыш начался!\n"
+        f"Название: {giveaway.title}\n"
+        "Участвовать можно в боте."
+    )
+    bot_text = (
+        "🎉 Новый розыгрыш начался!\n"
+        f"{giveaway.title}\n"
+        "Зайдите в бота и подайте заявку."
+    )
+    admin_text = (
+        "✅ Автоматический розыгрыш запущен.\n"
+        f"ID: {giveaway.id}\n"
+        f"Название: {giveaway.title}"
+    )
+    if settings.public_channel:
+        async with Bot(
+            token=settings.admin_bot_token,
+            default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        ) as admin_bot:
+            try:
+                await admin_bot.send_message(settings.public_channel, channel_text)
+            except Exception:
+                pass
+    celery_app.send_task("worker.tasks.send_broadcast_text", args=[bot_text])
+    admin_ids = _parse_admin_ids(settings.admin_tg_ids)
+    if admin_ids:
+        async with Bot(
+            token=settings.admin_bot_token,
+            default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        ) as admin_bot:
+            for admin_id in admin_ids:
+                try:
+                    await admin_bot.send_message(admin_id, admin_text)
+                except Exception:
+                    pass
+
+
 async def _draw_and_notify(active: Giveaway, session) -> dict:
     rows = (
         await session.execute(
@@ -408,6 +460,7 @@ async def _automation_rollover_check_async() -> None:
             required_channel=settings_row.required_channel,
             draw_at=draw_at,
         )
+        await _announce_start(giveaway)
         if settings_row.start_at:
             settings_row.start_at = next_run_at
         await mark_run_month(session, settings_row, run_at)
