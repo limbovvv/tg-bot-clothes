@@ -2,6 +2,7 @@ import asyncio
 
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ChatMemberStatus
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
 from sqlalchemy import select
@@ -19,7 +20,7 @@ from backend.app.models.enums import (
 )
 from backend.app.models.giveaway import Giveaway
 from backend.app.models.user import User
-from backend.app.services.user_service import mark_blocked
+from backend.app.services.user_service import mark_blocked, mark_subscribed_verified
 from worker.celery_app import celery_app
 
 
@@ -36,21 +37,38 @@ async def _send_payload(bot: Bot, tg_id: int, broadcast: Broadcast) -> None:
         await bot.send_video_note(tg_id, broadcast.payload_file_id)
 
 
-async def _collect_recipients(session, broadcast: Broadcast) -> list[int]:
+def _is_channel_member(status: ChatMemberStatus | str) -> bool:
+    return status in {
+        ChatMemberStatus.MEMBER,
+        ChatMemberStatus.ADMINISTRATOR,
+        ChatMemberStatus.OWNER,
+    }
+
+
+async def _collect_recipients(session, bot: Bot, broadcast: Broadcast) -> list[int]:
     if broadcast.segment == BroadcastSegment.all_bot_users:
         rows = (
             await session.execute(select(User.tg_id).where(User.is_blocked.is_(False)))
         ).all()
         return [row[0] for row in rows]
     if broadcast.segment == BroadcastSegment.subscribed_verified:
+        if not settings.public_channel:
+            return []
         rows = (
-            await session.execute(
-                select(User.tg_id).where(
-                    User.is_blocked.is_(False), User.subscribed_verified_at.is_not(None)
-                )
-            )
+            await session.execute(select(User.tg_id).where(User.is_blocked.is_(False)))
         ).all()
-        return [row[0] for row in rows]
+        recipients: list[int] = []
+        for row in rows:
+            tg_id = row[0]
+            try:
+                member = await bot.get_chat_member(settings.public_channel, tg_id)
+            except Exception:
+                continue
+            if _is_channel_member(member.status):
+                recipients.append(tg_id)
+                await mark_subscribed_verified(session, tg_id=tg_id)
+        await session.commit()
+        return recipients
 
     giveaway = (
         await session.execute(
@@ -91,7 +109,7 @@ async def _send_broadcast_async(broadcast_id: int) -> None:
             if broadcast.started_at is None:
                 broadcast.started_at = utcnow()
                 await session.commit()
-            recipients = await _collect_recipients(session, broadcast)
+            recipients = await _collect_recipients(session, bot, broadcast)
             sent_ok = 0
             sent_fail = 0
             rate = max(settings.broadcast_rate_per_sec, 1)
