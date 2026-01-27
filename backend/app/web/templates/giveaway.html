@@ -11,29 +11,22 @@
   </div>
   <form method="post" action="/admin/giveaway/automation/update">
     <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+    <input type="hidden" name="day_of_month" value="{{ automation.day_of_month }}" />
+    <input type="hidden" name="draw_offset_days" value="{{ automation.draw_offset_days }}" />
     <div class="form-check form-switch mb-3">
       <input class="form-check-input" type="checkbox" role="switch" id="autoEnabled" name="enabled" {% if automation.is_enabled %}checked{% endif %}>
       <label class="form-check-label" for="autoEnabled">Включить автоматический режим</label>
     </div>
     <div class="row g-2">
-      <div class="col-md-3">
-        <label class="form-label">День месяца</label>
-        <input class="form-control" type="number" min="1" max="28" name="day_of_month" value="{{ automation.day_of_month }}" />
-        <div class="form-text">Лучше 1–28</div>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Смещение даты розыгрыша (дней)</label>
-        <input class="form-control" type="number" min="0" max="31" name="draw_offset_days" value="{{ automation.draw_offset_days }}" />
-      </div>
-      <div class="col-md-3">
+      <div class="col-md-4">
         <label class="form-label">Дата старта (UTC)</label>
         <input class="form-control" type="date" name="start_date" value="{{ start_date_value }}" />
         <div class="form-text">Выберите дату в календаре.</div>
       </div>
-      <div class="col-md-3">
-        <label class="form-label">Время старта (UTC)</label>
-        <input class="form-control" type="time" name="start_time" value="{{ start_time_value }}" />
-        <div class="form-text">Старт произойдёт точно в это время.</div>
+      <div class="col-md-4">
+        <label class="form-label">Время старта (UTC, 24 часа)</label>
+        <input class="form-control" type="time" name="start_time" value="{{ start_time_value }}" step="60" />
+        <div class="form-text">Например, 21:30.</div>
       </div>
       <div class="col-12">
         <label class="form-label">Канал</label>
