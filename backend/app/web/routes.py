@@ -661,18 +661,13 @@ async def giveaway_view(
         else ""
     )
     approved_count = 0
-    giveaway_for_stats = giveaway
-    if giveaway_for_stats is None:
-        giveaway_for_stats = await session.scalar(
-            select(Giveaway).order_by(Giveaway.created_at.desc()).limit(1)
-        )
-    if giveaway_for_stats:
+    if giveaway:
         approved_count = (
             await session.scalar(
                 select(func.count())
                 .select_from(Entry)
                 .where(
-                    Entry.giveaway_id == giveaway_for_stats.id,
+                    Entry.giveaway_id == giveaway.id,
                     Entry.status == EntryStatus.approved,
                 )
             )
