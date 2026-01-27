@@ -644,6 +644,18 @@ async def giveaway_view(
         if auto_error
         else ""
     )
+    approved_count = 0
+    if giveaway:
+        approved_count = (
+            await session.scalar(
+                select(func.count())
+                .select_from(Entry)
+                .where(
+                    Entry.giveaway_id == giveaway.id,
+                    Entry.status == EntryStatus.approved,
+                )
+            )
+        ) or 0
     await session.commit()
     return render(
         "giveaway.html",
@@ -651,6 +663,7 @@ async def giveaway_view(
         user=user,
         giveaway=giveaway,
         automation=automation,
+        approved_count=approved_count,
         auto_saved=auto_saved,
         auto_error_msg=auto_error_msg,
         auto_overlay=auto_overlay,

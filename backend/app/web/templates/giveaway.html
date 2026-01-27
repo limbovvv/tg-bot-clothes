@@ -84,6 +84,11 @@
   </div>
   {% endif %}
 </div>
+{% if automation.is_enabled %}
+<div class="alert alert-info" role="alert">
+  Подтверждено участников: <strong>{{ approved_count }}</strong>. В автоматическом розыгрыше участвуют только подтвержденные заявки.
+</div>
+{% endif %}
 {% if auto_overlay %}
 <style>
   .auto-card {
