@@ -641,12 +641,17 @@ async def giveaway_view(
         start_at=automation.start_at,
         last_run_at=automation.last_run_at,
     )
-    next_run_at_msk = next_run_at.astimezone(MSK_TZ)
     auto_saved = request.query_params.get("auto_saved") == "1"
     auto_error = request.query_params.get("auto_error") == "1"
     create_error = request.query_params.get("create_error") == "1"
-    auto_overlay = automation.is_enabled and next_run_at > now
+    auto_overlay = automation.is_enabled
     has_active_giveaway = giveaway is not None
+    overlay_target_at = next_run_at
+    overlay_is_active = False
+    if giveaway and giveaway.draw_at:
+        overlay_target_at = giveaway.draw_at
+        overlay_is_active = True
+    overlay_target_msk = overlay_target_at.astimezone(MSK_TZ)
     start_at_msk = automation.start_at.astimezone(MSK_TZ) if automation.start_at else None
     start_hour_value = start_at_msk.strftime("%H") if start_at_msk else "03"
     start_minute_value = start_at_msk.strftime("%M") if start_at_msk else "05"
@@ -685,8 +690,9 @@ async def giveaway_view(
         create_error_msg=create_error_msg,
         auto_overlay=auto_overlay,
         has_active_giveaway=has_active_giveaway,
-        next_run_at_iso=next_run_at.isoformat(),
-        next_run_at_label=next_run_at_msk.strftime("%d.%m.%Y %H:%M МСК"),
+        overlay_target_iso=overlay_target_at.isoformat(),
+        overlay_target_label=overlay_target_msk.strftime("%d.%m.%Y %H:%M МСК"),
+        overlay_is_active=overlay_is_active,
         start_date_value=start_at_msk.strftime("%d.%m.%Y") if start_at_msk else "",
         start_time_value=f"{start_hour_value}:{start_minute_value}",
         start_hour_value=start_hour_value,
@@ -867,6 +873,27 @@ async def giveaway_automation_disable(
         payload={},
     )
     await session.commit()
+    return RedirectResponse(url="/admin/giveaway", status_code=302)
+
+
+@router.post("/giveaway/active/close")
+async def giveaway_active_close(
+    request: Request,
+    csrf_token: str = Form(...),
+    user: str = Depends(login_required),
+    session: AsyncSession = Depends(get_session),
+):
+    verify_csrf(request, csrf_token)
+    giveaway = await get_active_giveaway(session)
+    if giveaway:
+        await close_giveaway(session, giveaway_id=giveaway.id)
+        await log_action(
+            session,
+            actor_tg_id=0,
+            action="giveaway_close_active_web",
+            payload={"giveaway_id": giveaway.id},
+        )
+        await session.commit()
     return RedirectResponse(url="/admin/giveaway", status_code=302)
 
 

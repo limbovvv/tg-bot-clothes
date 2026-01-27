@@ -84,15 +84,27 @@
     <div class="auto-overlay-card">
       <div class="text-muted small mb-1">Автоматический розыгрыш</div>
       <div id="auto-countdown" class="auto-countdown">--:--:--</div>
-      <div class="text-muted small mb-3">Старт: {{ next_run_at_label }}</div>
-      {% if has_active_giveaway %}
-      <div class="alert alert-warning py-2 small" role="alert">
-        Сейчас есть активный розыгрыш. Авто-старт начнется после его завершения.
+      <div class="text-muted small mb-3">
+        {% if overlay_is_active %}
+        До конца: {{ overlay_target_label }}
+        {% else %}
+        Старт: {{ overlay_target_label }}
+        {% endif %}
       </div>
+      {% if overlay_is_active %}
+      <div class="alert alert-warning py-2 small" role="alert">
+        Идет активный розыгрыш. Новый создать нельзя.
+      </div>
+      {% endif %}
+      {% if overlay_is_active %}
+      <form method="post" action="/admin/giveaway/active/close" class="d-grid mb-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+        <button class="btn btn-outline-danger">Отменить розыгрыш</button>
+      </form>
       {% endif %}
       <form method="post" action="/admin/giveaway/automation/disable" class="d-grid">
         <input type="hidden" name="csrf_token" value="{{ csrf }}" />
-        <button class="btn btn-outline-danger">Отменить</button>
+        <button class="btn btn-outline-secondary">Выключить авто-режим</button>
       </form>
       <div id="auto-started" class="auto-started d-none">Розыгрыш начался</div>
     </div>
@@ -145,7 +157,7 @@
     if (!overlay) return;
     const countdownEl = document.getElementById("auto-countdown");
     const startedEl = document.getElementById("auto-started");
-    const target = new Date("{{ next_run_at_iso }}").getTime();
+    const target = new Date("{{ overlay_target_iso }}").getTime();
 
     function fmt(ms) {
       const total = Math.max(0, Math.floor(ms / 1000));
