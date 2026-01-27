@@ -530,6 +530,12 @@ async def giveaway_edit_confirm(callback, state: FSMContext):
             payload=payload,
         )
         await session.commit()
+    # Remove inline confirm/back buttons after the action.
+    if callback.message:
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
     await callback.message.answer("Розыгрыш обновлен")
     await state.set_state(GiveawayEditStates.choose)
     await callback.message.answer("Что редактировать?", reply_markup=edit_menu())
@@ -539,6 +545,11 @@ async def giveaway_edit_confirm(callback, state: FSMContext):
 @router.callback_query(F.data == "giveaway_edit_back")
 async def giveaway_edit_back(callback, state: FSMContext):
     await state.clear()
+    if callback.message:
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
     if callback.message:
         await giveaway_edit(callback.message, state)
     await callback.answer()
