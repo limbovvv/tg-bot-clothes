@@ -84,11 +84,14 @@
   </div>
   {% endif %}
 </div>
-{% if automation.is_enabled %}
 <div class="alert alert-info" role="alert">
-  Подтверждено участников: <strong>{{ approved_count }}</strong>. В автоматическом розыгрыше участвуют только подтвержденные заявки.
+  Подтверждено участников: <strong>{{ approved_count }}</strong>.
+  {% if automation.is_enabled %}
+  В автоматическом розыгрыше участвуют только подтвержденные заявки.
+  {% else %}
+  В розыгрыше участвуют только подтвержденные заявки.
+  {% endif %}
 </div>
-{% endif %}
 {% if auto_overlay %}
 <style>
   .auto-card {
@@ -174,8 +177,7 @@
     syncTime();
   })();
 </script>
-{% if not automation.is_enabled %}
-{% if giveaway %}
+{% if False %}
 <div class="row g-3">
   <div class="col-md-6">
     <form method="post" action="/admin/giveaway/update" class="card card-body h-100">
@@ -235,6 +237,5 @@
   </div>
   <button class="btn btn-primary">Создать</button>
 </form>
-{% endif %}
 {% endif %}
 {% endblock %}
