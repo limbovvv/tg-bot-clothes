@@ -885,13 +885,20 @@ async def giveaway_active_close(
 ):
     verify_csrf(request, csrf_token)
     giveaway = await get_active_giveaway(session)
+    automation = await get_automation_settings(session)
     if giveaway:
         await close_giveaway(session, giveaway_id=giveaway.id)
+        # Canceling the active giveaway should also stop automation completely.
+        automation.is_enabled = False
+        automation.start_at = None
+        automation.last_run_at = None
+        automation.last_run_month = None
+        automation.updated_at = utcnow()
         await log_action(
             session,
             actor_tg_id=0,
             action="giveaway_close_active_web",
-            payload={"giveaway_id": giveaway.id},
+            payload={"giveaway_id": giveaway.id, "automation_disabled": True},
         )
         await session.commit()
     return RedirectResponse(url="/admin/giveaway", status_code=302)
