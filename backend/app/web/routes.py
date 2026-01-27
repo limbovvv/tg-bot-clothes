@@ -644,6 +644,7 @@ async def giveaway_view(
     next_run_at_msk = next_run_at.astimezone(MSK_TZ)
     auto_saved = request.query_params.get("auto_saved") == "1"
     auto_error = request.query_params.get("auto_error") == "1"
+    create_error = request.query_params.get("create_error") == "1"
     auto_overlay = automation.is_enabled and next_run_at > now
     has_active_giveaway = giveaway is not None
     start_at_msk = automation.start_at.astimezone(MSK_TZ) if automation.start_at else None
@@ -652,6 +653,11 @@ async def giveaway_view(
     auto_error_msg = (
         "Это время уже прошло. Выберите дату и время старта в будущем."
         if auto_error
+        else ""
+    )
+    create_error_msg = (
+        "Уже есть активный розыгрыш. Создание нового недоступно."
+        if create_error
         else ""
     )
     approved_count = 0
@@ -681,6 +687,7 @@ async def giveaway_view(
         approved_count=approved_count,
         auto_saved=auto_saved,
         auto_error_msg=auto_error_msg,
+        create_error_msg=create_error_msg,
         auto_overlay=auto_overlay,
         has_active_giveaway=has_active_giveaway,
         next_run_at_iso=next_run_at.isoformat(),
@@ -732,6 +739,7 @@ async def giveaway_create(
         await session.commit()
     except ActiveGiveawayExists:
         await session.rollback()
+        return RedirectResponse(url="/admin/giveaway?create_error=1", status_code=302)
     return RedirectResponse(url="/admin/giveaway", status_code=302)
 
 

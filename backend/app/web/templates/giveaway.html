@@ -4,6 +4,16 @@
 {% if auto_error_msg %}
 <div class="alert alert-danger" role="alert">{{ auto_error_msg }}</div>
 {% endif %}
+{% if create_error_msg %}
+<div class="alert alert-warning" role="alert">{{ create_error_msg }}</div>
+{% endif %}
+{% if giveaway %}
+<div class="alert alert-secondary" role="alert">
+  Активный розыгрыш: <strong>{{ giveaway.title }}</strong>.
+  Канал: {{ giveaway.required_channel }}.
+  Дата: {{ format_date_only(giveaway.draw_at) or "не указана" }}.
+</div>
+{% endif %}
 <div id="auto-card" class="card card-body mb-4 auto-card">
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h5 class="mb-0">Автоматический розыгрыш</h5>
