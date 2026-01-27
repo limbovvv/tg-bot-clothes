@@ -534,6 +534,11 @@ async def entries_list(
     user: str = Depends(login_required),
     session: AsyncSession = Depends(get_session),
 ):
+    status_labels = {
+        EntryStatus.pending.value: "Не подтверждено",
+        EntryStatus.approved.value: "Подтверждено",
+        EntryStatus.rejected.value: "Отклонено",
+    }
     giveaway = await get_active_giveaway(session)
     if not giveaway:
         return render(
@@ -542,6 +547,8 @@ async def entries_list(
             user=user,
             entries=[],
             users={},
+            status_labels=status_labels,
+            status_filter=status or "",
             csrf=get_csrf_token(request),
         )
     query = (
@@ -567,6 +574,8 @@ async def entries_list(
         user=user,
         entries=[row[0] for row in rows],
         users={row[0].id: row[1] for row in rows},
+        status_labels=status_labels,
+        status_filter=status or "",
         csrf=get_csrf_token(request),
     )
 

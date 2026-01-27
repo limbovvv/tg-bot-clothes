@@ -5,9 +5,9 @@
   <div class="col-md-3">
     <select class="form-select" name="status">
       <option value="">Все статусы</option>
-      <option value="pending">pending</option>
-      <option value="approved">approved</option>
-      <option value="rejected">rejected</option>
+      <option value="pending" {% if status_filter == "pending" %}selected{% endif %}>Не подтверждено</option>
+      <option value="approved" {% if status_filter == "approved" %}selected{% endif %}>Подтверждено</option>
+      <option value="rejected" {% if status_filter == "rejected" %}selected{% endif %}>Отклонено</option>
     </select>
   </div>
   <div class="col-md-4">
@@ -24,9 +24,7 @@
       <th>ФИО</th>
       <th>Телефон</th>
       <th>Username</th>
-      <th>Скриншот</th>
       <th>Статус</th>
-      <th>Действие</th>
     </tr>
   </thead>
   <tbody>
@@ -37,19 +35,7 @@
       <td>{{ entry.fio }}</td>
       <td>{{ entry.phone }}</td>
       <td>@{{ user.username }}</td>
-      <td>{{ entry.screenshot_file_id }}</td>
-      <td>{{ entry.status }}</td>
-      <td class="d-flex gap-2">
-        <form method="post" action="/admin/entries/{{ entry.id }}/approve">
-          <input type="hidden" name="csrf_token" value="{{ csrf }}" />
-          <button class="btn btn-sm btn-success">Одобрить</button>
-        </form>
-        <form method="post" action="/admin/entries/{{ entry.id }}/reject">
-          <input type="hidden" name="csrf_token" value="{{ csrf }}" />
-          <input class="form-control form-control-sm mb-1" name="reason" placeholder="Причина" />
-          <button class="btn btn-sm btn-danger">Отклонить</button>
-        </form>
-      </td>
+      <td>{{ status_labels.get(entry.status.value, entry.status.value) }}</td>
     </tr>
     {% endfor %}
   </tbody>
