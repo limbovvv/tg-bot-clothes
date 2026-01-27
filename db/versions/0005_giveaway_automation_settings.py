@@ -1,6 +1,6 @@
 """giveaway automation settings
 
-Revision ID: 0005_giveaway_automation_settings
+Revision ID: 0005_giveaway_auto
 Revises: 0004_broadcast_status_fields
 Create Date: 2026-01-26 00:00:00.000000
 
@@ -8,7 +8,7 @@ Create Date: 2026-01-26 00:00:00.000000
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0005_giveaway_automation_settings"
+revision = "0005_giveaway_auto"
 down_revision = "0004_broadcast_status_fields"
 branch_labels = None
 depends_on = None
