@@ -33,6 +33,8 @@ from backend.app.services.user_service import mark_subscribed_verified, upsert_u
 from bots.common import messages
 
 router = Router()
+# User bot should only react to direct/private messages, not group chat messages.
+router.message.filter(F.chat.type == "private")
 
 CHANNEL_RE = re.compile(r"(?:https?://)?t\\.me/([A-Za-z0-9_]+)")
 

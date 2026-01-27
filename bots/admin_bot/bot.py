@@ -43,6 +43,8 @@ from backend.app.services.winner_service import create_winner
 from worker.celery_app import celery_app
 
 router = Router()
+# Admin bot should only react to direct/private messages, not group chat messages.
+router.message.filter(F.chat.type == "private")
 
 
 async def is_admin_user(user) -> bool:
