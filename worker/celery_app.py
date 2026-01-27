@@ -22,7 +22,7 @@ celery_app.conf.update(
     beat_schedule={
         "automation-rollover-daily": {
             "task": "worker.tasks.automation_rollover_check",
-            "schedule": crontab(minute=5, hour=0),
+            "schedule": crontab(minute="*/1"),
         }
     },
 )

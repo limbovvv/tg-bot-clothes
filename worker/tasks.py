@@ -1,5 +1,7 @@
 import asyncio
-from datetime import datetime, timedelta
+import random
+from calendar import monthrange
+from datetime import datetime, timedelta, timezone
 
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
@@ -32,6 +34,7 @@ from backend.app.services.giveaway_service import (
     create_giveaway,
     get_active_giveaway,
 )
+from backend.app.services.winner_service import create_winner
 from backend.app.services.user_service import mark_blocked, mark_subscribed_verified
 from worker.celery_app import celery_app
 
@@ -283,6 +286,78 @@ def _format_title(template: str, now: datetime) -> str:
         return safe_template
 
 
+def _add_one_month(dt: datetime) -> datetime:
+    year = dt.year
+    month = dt.month + 1
+    if month == 13:
+        month = 1
+        year += 1
+    last_day = monthrange(year, month)[1]
+    day = min(dt.day, last_day)
+    return dt.replace(year=year, month=month, day=day)
+
+
+def _month_run_at(day_of_month: int, now: datetime) -> datetime:
+    safe_day = max(1, min(day_of_month, 28))
+    candidate = datetime(now.year, now.month, safe_day, 0, 5, tzinfo=timezone.utc)
+    # If we are already past the configured day in this month, plan next month.
+    # If we are on the same day but later than 00:05, we should still run today.
+    if now.date() > candidate.date():
+        candidate = _add_one_month(candidate)
+    return candidate
+
+
+async def _draw_and_notify(active: Giveaway, session) -> dict:
+    rows = (
+        await session.execute(
+            select(Entry, User)
+            .join(User, User.tg_id == Entry.tg_id)
+            .where(
+                Entry.giveaway_id == active.id,
+                Entry.status == EntryStatus.approved,
+                User.username.is_not(None),
+                User.is_blocked.is_(False),
+            )
+        )
+    ).all()
+    if not rows:
+        return {"winner_username": None, "winner_tg_id": None}
+    entry, user = random.choice(rows)
+    await create_winner(session, giveaway_id=active.id, entry_id=entry.id)
+    winner_username = user.username or ""
+    winner_tg_id = user.tg_id
+    public_text = f"Победитель: @{winner_username}" if winner_username else None
+    broadcast_text = (
+        f"🎉 Розыгрыш завершен!\nПобедитель: @{winner_username}\n"
+        "Новый розыгрыш уже начался."
+        if winner_username
+        else "🎉 Розыгрыш завершен! Новый розыгрыш уже начался."
+    )
+    if public_text and settings.public_channel:
+        async with Bot(
+            token=settings.admin_bot_token,
+            default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        ) as admin_bot:
+            try:
+                await admin_bot.send_message(settings.public_channel, public_text)
+            except Exception:
+                pass
+    async with Bot(
+        token=settings.user_bot_token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    ) as user_bot:
+        if winner_username:
+            try:
+                await user_bot.send_message(
+                    winner_tg_id,
+                    "🎉 Поздравляем! Вы победитель розыгрыша.",
+                )
+            except Exception:
+                pass
+    celery_app.send_task("worker.tasks.send_broadcast_text", args=[broadcast_text])
+    return {"winner_username": winner_username, "winner_tg_id": winner_tg_id}
+
+
 @celery_app.task(name="worker.tasks.automation_rollover_check")
 def automation_rollover_check() -> None:
     asyncio.run(_automation_rollover_check_async())
@@ -299,28 +374,33 @@ async def _automation_rollover_check_async() -> None:
             await session.commit()
             return
 
-        # If an exact start datetime is set, prefer it over day-of-month logic.
         if settings_row.start_at:
-            if now < settings_row.start_at:
+            run_at = settings_row.start_at
+            if now < run_at:
                 await session.commit()
                 return
-            if settings_row.last_run_at and settings_row.last_run_at >= settings_row.start_at:
+            if settings_row.last_run_at and settings_row.last_run_at >= run_at:
                 await session.commit()
                 return
+            next_run_at = _add_one_month(run_at)
         else:
-            if now.day != settings_row.day_of_month:
+            run_at = _month_run_at(settings_row.day_of_month, now)
+            if now < run_at:
                 await session.commit()
                 return
-            if not await should_run_for_month(settings_row, now):
+            if not await should_run_for_month(settings_row, run_at):
                 await session.commit()
                 return
+            next_run_at = _add_one_month(run_at)
 
         active = await get_active_giveaway(session)
+        winner_info = {"winner_username": None, "winner_tg_id": None}
         if active:
+            winner_info = await _draw_and_notify(active, session)
             await close_giveaway(session, giveaway_id=active.id)
 
-        title = _format_title(settings_row.title_template, now)
-        draw_at = now + timedelta(days=settings_row.draw_offset_days)
+        title = _format_title(settings_row.title_template, run_at)
+        draw_at = next_run_at + timedelta(days=settings_row.draw_offset_days)
         giveaway = await create_giveaway(
             session,
             title=title,
@@ -328,7 +408,9 @@ async def _automation_rollover_check_async() -> None:
             required_channel=settings_row.required_channel,
             draw_at=draw_at,
         )
-        await mark_run_month(session, settings_row, now)
+        if settings_row.start_at:
+            settings_row.start_at = next_run_at
+        await mark_run_month(session, settings_row, run_at)
         await log_action(
             session,
             actor_tg_id=0,
@@ -336,7 +418,9 @@ async def _automation_rollover_check_async() -> None:
             payload={
                 "giveaway_id": giveaway.id,
                 "title": title,
-                "day_of_month": settings_row.day_of_month,
+                "run_at": run_at.isoformat(),
+                "next_run_at": next_run_at.isoformat(),
+                "winner_username": winner_info["winner_username"],
             },
         )
         await session.commit()

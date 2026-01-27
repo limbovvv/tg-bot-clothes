@@ -106,10 +106,7 @@ def compute_next_run_at_with_start(
     last_run_at: datetime | None,
 ) -> datetime:
     if start_at:
-        if start_at > now:
-            return start_at
-        if not last_run_at or last_run_at < start_at:
-            return start_at
+        return start_at
     return compute_next_run_at(day_of_month, now)
 
 
