@@ -1,6 +1,83 @@
 {% extends "base.html" %}
 {% block content %}
 <h3 class="mb-4">Розыгрыш</h3>
+{% if auto_saved and automation.is_enabled %}
+<div id="auto-overlay" class="auto-overlay">
+  <div class="auto-overlay-card">
+    <div class="text-muted small mb-1">Автоматический розыгрыш</div>
+    <div id="auto-countdown" class="auto-countdown">--:--:--</div>
+    <div class="text-muted small mb-3">Старт: {{ next_run_at_label }}</div>
+    <form method="post" action="/admin/giveaway/automation/disable" class="d-grid">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+      <button class="btn btn-outline-danger">Отменить</button>
+    </form>
+    <div id="auto-started" class="auto-started d-none">Розыгрыш начался</div>
+  </div>
+</div>
+<style>
+  .auto-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 12, 16, 0.55);
+    backdrop-filter: blur(3px);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .auto-overlay-card {
+    width: min(420px, 100%);
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 24px 60px rgba(16, 24, 40, 0.18);
+    text-align: center;
+  }
+  .auto-countdown {
+    font-size: clamp(32px, 8vw, 56px);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .auto-started {
+    margin-top: 12px;
+    font-weight: 600;
+    color: #198754;
+  }
+</style>
+<script>
+  (function () {
+    const overlay = document.getElementById("auto-overlay");
+    if (!overlay) return;
+    const countdownEl = document.getElementById("auto-countdown");
+    const startedEl = document.getElementById("auto-started");
+    const target = new Date("{{ next_run_at_iso }}").getTime();
+
+    function fmt(ms) {
+      const total = Math.max(0, Math.floor(ms / 1000));
+      const h = Math.floor(total / 3600);
+      const m = Math.floor((total % 3600) / 60);
+      const s = total % 60;
+      return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
+    }
+
+    function tick() {
+      const now = Date.now();
+      const diff = target - now;
+      if (diff <= 0) {
+        countdownEl.textContent = "00:00:00";
+        startedEl.classList.remove("d-none");
+        return;
+      }
+      countdownEl.textContent = fmt(diff);
+      setTimeout(tick, 1000);
+    }
+
+    tick();
+  })();
+</script>
+{% endif %}
 <div class="card card-body mb-4">
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h5 class="mb-0">Автоматический розыгрыш</h5>

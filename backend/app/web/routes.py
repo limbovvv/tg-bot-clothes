@@ -1,5 +1,5 @@
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
@@ -80,6 +80,22 @@ def format_date_only(dt: datetime | None) -> str:
     if not dt:
         return ""
     return dt.strftime("%d.%m.%Y")
+
+
+def compute_next_run_at(day_of_month: int, now: datetime) -> datetime:
+    # Beat runs daily at 00:05 UTC; use the same reference point for countdown.
+    safe_day = max(1, min(day_of_month, 28))
+    year = now.year
+    month = now.month
+    candidate = datetime(year, month, safe_day, 0, 5, tzinfo=timezone.utc)
+    if candidate <= now:
+        if month == 12:
+            year += 1
+            month = 1
+        else:
+            month += 1
+        candidate = datetime(year, month, safe_day, 0, 5, tzinfo=timezone.utc)
+    return candidate
 
 
 def render(template_name: str, **context):
@@ -595,6 +611,9 @@ async def giveaway_view(
 ):
     giveaway = await get_active_giveaway(session)
     automation = await get_automation_settings(session)
+    now = utcnow()
+    next_run_at = compute_next_run_at(automation.day_of_month, now)
+    auto_saved = request.query_params.get("auto_saved") == "1"
     await session.commit()
     return render(
         "giveaway.html",
@@ -602,6 +621,9 @@ async def giveaway_view(
         user=user,
         giveaway=giveaway,
         automation=automation,
+        auto_saved=auto_saved,
+        next_run_at_iso=next_run_at.isoformat(),
+        next_run_at_label=next_run_at.strftime("%d.%m.%Y %H:%M UTC"),
         format_date_only=format_date_only,
         csrf=get_csrf_token(request),
     )
@@ -739,6 +761,25 @@ async def giveaway_automation_update(
             "is_enabled": settings_row.is_enabled,
             "day_of_month": settings_row.day_of_month,
         },
+    )
+    await session.commit()
+    return RedirectResponse(url="/admin/giveaway?auto_saved=1", status_code=302)
+
+
+@router.post("/giveaway/automation/disable")
+async def giveaway_automation_disable(
+    request: Request,
+    csrf_token: str = Form(...),
+    user: str = Depends(login_required),
+    session: AsyncSession = Depends(get_session),
+):
+    verify_csrf(request, csrf_token)
+    await disable_automation(session)
+    await log_action(
+        session,
+        actor_tg_id=0,
+        action="automation_disable_web",
+        payload={},
     )
     await session.commit()
     return RedirectResponse(url="/admin/giveaway", status_code=302)
