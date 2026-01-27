@@ -30,6 +30,7 @@ from backend.app.models.enums import (
 from backend.app.models.giveaway import Giveaway
 from backend.app.models.user import User
 from backend.app.services.audit_service import log_action
+from backend.app.services.automation_service import disable_automation
 from backend.app.services.broadcast_service import create_broadcast
 from backend.app.services.errors import ActiveGiveawayExists
 from backend.app.services.giveaway_service import (
@@ -572,6 +573,7 @@ async def giveaway_close_confirm(callback):
             await callback.message.answer("Нет активного розыгрыша")
             return
         await close_giveaway(session, giveaway_id=giveaway.id)
+        await disable_automation(session)
         await log_action(
             session,
             actor_tg_id=callback.from_user.id,
@@ -882,6 +884,7 @@ async def draw_confirm(callback, state: FSMContext):
         for entry in winners:
             await create_winner(session, giveaway_id=giveaway.id, entry_id=entry.id)
         await close_giveaway(session, giveaway_id=giveaway.id)
+        await disable_automation(session)
         await log_action(
             session,
             actor_tg_id=callback.from_user.id,

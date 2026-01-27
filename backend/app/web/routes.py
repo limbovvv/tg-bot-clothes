@@ -32,6 +32,11 @@ from backend.app.models.giveaway import Giveaway
 from backend.app.models.user import User
 from backend.app.models.winner import Winner
 from backend.app.services.audit_service import log_action
+from backend.app.services.automation_service import (
+    disable_automation,
+    get_automation_settings,
+    update_automation_settings,
+)
 from backend.app.services.broadcast_service import create_broadcast
 from backend.app.services.errors import ActiveGiveawayExists
 from backend.app.services.giveaway_service import (
@@ -589,11 +594,14 @@ async def giveaway_view(
     session: AsyncSession = Depends(get_session),
 ):
     giveaway = await get_active_giveaway(session)
+    automation = await get_automation_settings(session)
+    await session.commit()
     return render(
         "giveaway.html",
         request=request,
         user=user,
         giveaway=giveaway,
+        automation=automation,
         format_date_only=format_date_only,
         csrf=get_csrf_token(request),
     )
@@ -688,11 +696,49 @@ async def giveaway_close(
 ):
     verify_csrf(request, csrf_token)
     await close_giveaway(session, giveaway_id=giveaway_id)
+    await disable_automation(session)
     await log_action(
         session,
         actor_tg_id=0,
         action="giveaway_close_web",
         payload={"giveaway_id": giveaway_id},
+    )
+    await session.commit()
+    return RedirectResponse(url="/admin/giveaway", status_code=302)
+
+
+@router.post("/giveaway/automation/update")
+async def giveaway_automation_update(
+    request: Request,
+    enabled: str | None = Form(None),
+    day_of_month: int = Form(1),
+    title_template: str = Form("Ежемесячный розыгрыш"),
+    required_channel: str = Form(""),
+    rules_text: str = Form(""),
+    draw_offset_days: int = Form(0),
+    csrf_token: str = Form(...),
+    user: str = Depends(login_required),
+    session: AsyncSession = Depends(get_session),
+):
+    verify_csrf(request, csrf_token)
+    is_enabled = enabled == "on"
+    settings_row = await update_automation_settings(
+        session,
+        is_enabled=is_enabled,
+        day_of_month=day_of_month,
+        title_template=title_template,
+        rules_text=rules_text,
+        required_channel=required_channel,
+        draw_offset_days=draw_offset_days,
+    )
+    await log_action(
+        session,
+        actor_tg_id=0,
+        action="automation_update_web",
+        payload={
+            "is_enabled": settings_row.is_enabled,
+            "day_of_month": settings_row.day_of_month,
+        },
     )
     await session.commit()
     return RedirectResponse(url="/admin/giveaway", status_code=302)

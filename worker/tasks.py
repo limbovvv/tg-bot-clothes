@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timedelta
 
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
@@ -12,14 +13,25 @@ from backend.app.core.time import utcnow
 from backend.app.db.session import SessionLocal
 from backend.app.models.broadcast import Broadcast
 from backend.app.models.entry import Entry
+from backend.app.models.giveaway import Giveaway
 from backend.app.models.enums import (
     BroadcastPayloadType,
     BroadcastSegment,
     EntryStatus,
     GiveawayStatus,
 )
-from backend.app.models.giveaway import Giveaway
 from backend.app.models.user import User
+from backend.app.services.automation_service import (
+    get_automation_settings,
+    mark_run_month,
+    should_run_for_month,
+)
+from backend.app.services.audit_service import log_action
+from backend.app.services.giveaway_service import (
+    close_giveaway,
+    create_giveaway,
+    get_active_giveaway,
+)
 from backend.app.services.user_service import mark_blocked, mark_subscribed_verified
 from worker.celery_app import celery_app
 
@@ -241,3 +253,80 @@ async def _send_broadcast_text_exclude_async(
             broadcast.sent_ok = sent_ok
             broadcast.sent_fail = sent_fail
             await session.commit()
+
+
+def _format_title(template: str, now: datetime) -> str:
+    month_names = [
+        "январь",
+        "февраль",
+        "март",
+        "апрель",
+        "май",
+        "июнь",
+        "июль",
+        "август",
+        "сентябрь",
+        "октябрь",
+        "ноябрь",
+        "декабрь",
+    ]
+    month_index = now.month - 1
+    month_name = month_names[month_index]
+    safe_template = template or "Ежемесячный розыгрыш"
+    try:
+        return safe_template.format(
+            month=now.month,
+            month_name=month_name,
+            year=now.year,
+        )
+    except Exception:
+        return safe_template
+
+
+@celery_app.task(name="worker.tasks.automation_rollover_check")
+def automation_rollover_check() -> None:
+    asyncio.run(_automation_rollover_check_async())
+
+
+async def _automation_rollover_check_async() -> None:
+    now = utcnow()
+    async with SessionLocal() as session:
+        settings_row = await get_automation_settings(session)
+        if not settings_row.is_enabled:
+            await session.commit()
+            return
+        if now.day != settings_row.day_of_month:
+            await session.commit()
+            return
+        if not await should_run_for_month(settings_row, now):
+            await session.commit()
+            return
+        if not settings_row.required_channel or not settings_row.rules_text:
+            await session.commit()
+            return
+
+        active = await get_active_giveaway(session)
+        if active:
+            await close_giveaway(session, giveaway_id=active.id)
+
+        title = _format_title(settings_row.title_template, now)
+        draw_at = now + timedelta(days=settings_row.draw_offset_days)
+        giveaway = await create_giveaway(
+            session,
+            title=title,
+            rules_text=settings_row.rules_text,
+            required_channel=settings_row.required_channel,
+            draw_at=draw_at,
+        )
+        await mark_run_month(session, settings_row, now)
+        await log_action(
+            session,
+            actor_tg_id=0,
+            action="automation_rollover",
+            payload={
+                "giveaway_id": giveaway.id,
+                "title": title,
+                "day_of_month": settings_row.day_of_month,
+            },
+        )
+        await session.commit()

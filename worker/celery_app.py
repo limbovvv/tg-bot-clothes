@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.schedules import crontab
 
 from backend.app.core.config import settings
 from backend.app.core.logging import setup_logging
@@ -18,4 +19,10 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
+    beat_schedule={
+        "automation-rollover-daily": {
+            "task": "worker.tasks.automation_rollover_check",
+            "schedule": crontab(minute=5, hour=0),
+        }
+    },
 )

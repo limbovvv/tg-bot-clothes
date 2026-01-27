@@ -62,6 +62,14 @@ services:
       backend:
         condition: service_healthy
 
+  beat:
+    build: .
+    env_file: .env
+    command: ["celery", "-A", "worker.celery_app.celery_app", "beat", "-l", "INFO"]
+    depends_on:
+      backend:
+        condition: service_healthy
+
   nginx:
     image: nginx:1.27-alpine
     volumes:

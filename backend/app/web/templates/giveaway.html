@@ -62,4 +62,47 @@
   <button class="btn btn-primary">Создать</button>
 </form>
 {% endif %}
+
+<div class="card card-body mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0">Автоматический розыгрыш</h5>
+    <span class="badge text-bg-secondary">ежемесячно</span>
+  </div>
+  <div class="small text-muted mb-3">
+    Если закрыть розыгрыш вручную, автоматический режим отключается — его нужно включить снова.
+  </div>
+  <form method="post" action="/admin/giveaway/automation/update">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+    <div class="form-check form-switch mb-3">
+      <input class="form-check-input" type="checkbox" role="switch" id="autoEnabled" name="enabled" {% if automation.is_enabled %}checked{% endif %}>
+      <label class="form-check-label" for="autoEnabled">Включить автоматический режим</label>
+    </div>
+    <div class="row g-2">
+      <div class="col-md-3">
+        <label class="form-label">День месяца</label>
+        <input class="form-control" type="number" min="1" max="28" name="day_of_month" value="{{ automation.day_of_month }}" />
+        <div class="form-text">Лучше 1–28</div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Смещение даты розыгрыша (дней)</label>
+        <input class="form-control" type="number" min="0" max="31" name="draw_offset_days" value="{{ automation.draw_offset_days }}" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Канал</label>
+        <input class="form-control" name="required_channel" value="{{ automation.required_channel }}" placeholder="@channel" />
+      </div>
+      <div class="col-12">
+        <label class="form-label">Название (можно использовать {month}, {month_name}, {year})</label>
+        <input class="form-control" name="title_template" value="{{ automation.title_template }}" />
+      </div>
+      <div class="col-12">
+        <label class="form-label">Правила</label>
+        <textarea class="form-control" name="rules_text" rows="5">{{ automation.rules_text }}</textarea>
+      </div>
+    </div>
+    <div class="mt-3 d-flex gap-2">
+      <button class="btn btn-primary">Сохранить настройки</button>
+    </div>
+  </form>
+</div>
 {% endblock %}

@@ -10,6 +10,7 @@ from backend.app.models.enums import (
     GiveawayStatus,
 )
 from backend.app.models.giveaway import Giveaway
+from backend.app.models.giveaway_automation import GiveawayAutomationSettings
 from backend.app.models.user import User
 from backend.app.models.winner import Winner
 
@@ -23,6 +24,7 @@ __all__ = [
     "BroadcastPayloadType",
     "BroadcastSegment",
     "Giveaway",
+    "GiveawayAutomationSettings",
     "GiveawayStatus",
     "User",
     "Winner",

@@ -14,7 +14,7 @@ Production‑ready репозиторий: user‑bot, admin‑bot, FastAPI back
 - `backend/` — FastAPI приложение + веб‑админка
 - `bots/user_bot/` — пользовательский бот
 - `bots/admin_bot/` — админ‑бот
-- `worker/` — Celery воркер
+- `worker/` — Celery воркер + планировщик (beat)
 - `db/` — Alembic миграции
 - `deploy/` — nginx + скрипт бэкапа
 - `scripts/` — утилиты
@@ -67,6 +67,14 @@ podman-compose exec backend python /app/scripts/create_admin.py \
 - Отправка выполняется через Celery.
 - Скорость регулируется `BROADCAST_RATE_PER_SEC`.
 
+## Автоматический ежемесячный розыгрыш
+- Настраивается в разделе `Розыгрыш` → блок «Автоматический розыгрыш».
+- Планировщик Celery Beat проверяет настройки каждый день в 00:05 UTC.
+- В день месяца из настроек:
+  1) активный розыгрыш закрывается,
+  2) создаётся новый по шаблону.
+- Если закрыть розыгрыш вручную, автоматический режим отключается.
+
 ## Миграции
 ```bash
 podman-compose exec backend alembic -c db/alembic.ini upgrade head
@@ -84,6 +92,13 @@ cd ~/tg-bot-clothes
 git pull
 podman-compose up -d --build
 podman-compose exec backend alembic -c db/alembic.ini upgrade head
+```
+
+Если нужно гарантированно пересоздать сервисы после изменений:
+```bash
+podman stop tg-bot-clothes_backend_1 tg-bot-clothes_worker_1 tg-bot-clothes_beat_1 tg-bot-clothes_admin_bot_1
+podman rm tg-bot-clothes_backend_1 tg-bot-clothes_worker_1 tg-bot-clothes_beat_1 tg-bot-clothes_admin_bot_1
+podman-compose up -d --build backend worker beat admin_bot
 ```
 
 Если обновлялась только веб‑часть, можно пересобрать только backend:
