@@ -26,9 +26,14 @@
         <input class="form-control" type="number" min="0" max="31" name="draw_offset_days" value="{{ automation.draw_offset_days }}" />
       </div>
       <div class="col-md-3">
-        <label class="form-label">Точная дата старта (UTC)</label>
-        <input class="form-control" type="datetime-local" name="start_at" value="{{ start_at_value }}" />
-        <div class="form-text">Если указать, старт произойдёт точно в это время.</div>
+        <label class="form-label">Дата старта (UTC)</label>
+        <input class="form-control" type="date" name="start_date" value="{{ start_date_value }}" />
+        <div class="form-text">Выберите дату в календаре.</div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Время старта (UTC)</label>
+        <input class="form-control" type="time" name="start_time" value="{{ start_time_value }}" />
+        <div class="form-text">Старт произойдёт точно в это время.</div>
       </div>
       <div class="col-12">
         <label class="form-label">Канал</label>

@@ -643,7 +643,8 @@ async def giveaway_view(
         auto_overlay=auto_overlay,
         next_run_at_iso=next_run_at.isoformat(),
         next_run_at_label=next_run_at.strftime("%d.%m.%Y %H:%M UTC"),
-        start_at_value=automation.start_at.strftime("%Y-%m-%dT%H:%M") if automation.start_at else "",
+        start_date_value=automation.start_at.strftime("%Y-%m-%d") if automation.start_at else "",
+        start_time_value=automation.start_at.strftime("%H:%M") if automation.start_at else "00:05",
         format_date_only=format_date_only,
         csrf=get_csrf_token(request),
     )
@@ -758,7 +759,8 @@ async def giveaway_automation_update(
     required_channel: str = Form(""),
     rules_text: str = Form(""),
     draw_offset_days: int = Form(0),
-    start_at: str = Form(""),
+    start_date: str = Form(""),
+    start_time: str = Form("00:05"),
     csrf_token: str = Form(...),
     user: str = Depends(login_required),
     session: AsyncSession = Depends(get_session),
@@ -766,9 +768,12 @@ async def giveaway_automation_update(
     verify_csrf(request, csrf_token)
     is_enabled = enabled == "on"
     start_dt = None
-    if start_at:
+    if start_date:
         try:
-            start_dt = datetime.fromisoformat(start_at).replace(tzinfo=timezone.utc)
+            start_iso = f"{start_date}T{start_time or '00:05'}"
+            start_dt = datetime.fromisoformat(start_iso).replace(tzinfo=timezone.utc)
+            # Keep monthly rollover aligned with the chosen start date.
+            day_of_month = start_dt.day
         except ValueError:
             start_dt = None
     settings_row = await update_automation_settings(
