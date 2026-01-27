@@ -636,6 +636,8 @@ async def giveaway_view(
     auto_saved = request.query_params.get("auto_saved") == "1"
     auto_overlay = automation.is_enabled and giveaway is None and next_run_at > now
     start_at_msk = automation.start_at.astimezone(MSK_TZ) if automation.start_at else None
+    start_hour_value = start_at_msk.strftime("%H") if start_at_msk else "03"
+    start_minute_value = start_at_msk.strftime("%M") if start_at_msk else "05"
     await session.commit()
     return render(
         "giveaway.html",
@@ -648,7 +650,9 @@ async def giveaway_view(
         next_run_at_iso=next_run_at.isoformat(),
         next_run_at_label=next_run_at_msk.strftime("%d.%m.%Y %H:%M МСК"),
         start_date_value=start_at_msk.strftime("%Y-%m-%d") if start_at_msk else "",
-        start_time_value=start_at_msk.strftime("%H:%M") if start_at_msk else "03:05",
+        start_time_value=f"{start_hour_value}:{start_minute_value}",
+        start_hour_value=start_hour_value,
+        start_minute_value=start_minute_value,
         format_date_only=format_date_only,
         csrf=get_csrf_token(request),
     )
