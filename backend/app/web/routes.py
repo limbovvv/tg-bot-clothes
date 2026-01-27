@@ -1,5 +1,5 @@
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
@@ -74,6 +74,8 @@ env = Environment(
     loader=FileSystemLoader("backend/app/web/templates"),
     autoescape=select_autoescape(["html"]),
 )
+
+MSK_TZ = timezone(timedelta(hours=3))
 
 
 def format_date_only(dt: datetime | None) -> str:
@@ -630,8 +632,10 @@ async def giveaway_view(
         start_at=automation.start_at,
         last_run_at=automation.last_run_at,
     )
+    next_run_at_msk = next_run_at.astimezone(MSK_TZ)
     auto_saved = request.query_params.get("auto_saved") == "1"
     auto_overlay = automation.is_enabled and giveaway is None and next_run_at > now
+    start_at_msk = automation.start_at.astimezone(MSK_TZ) if automation.start_at else None
     await session.commit()
     return render(
         "giveaway.html",
@@ -642,9 +646,9 @@ async def giveaway_view(
         auto_saved=auto_saved,
         auto_overlay=auto_overlay,
         next_run_at_iso=next_run_at.isoformat(),
-        next_run_at_label=next_run_at.strftime("%d.%m.%Y %H:%M UTC"),
-        start_date_value=automation.start_at.strftime("%Y-%m-%d") if automation.start_at else "",
-        start_time_value=automation.start_at.strftime("%H:%M") if automation.start_at else "00:05",
+        next_run_at_label=next_run_at_msk.strftime("%d.%m.%Y %H:%M МСК"),
+        start_date_value=start_at_msk.strftime("%Y-%m-%d") if start_at_msk else "",
+        start_time_value=start_at_msk.strftime("%H:%M") if start_at_msk else "03:05",
         format_date_only=format_date_only,
         csrf=get_csrf_token(request),
     )
@@ -771,7 +775,8 @@ async def giveaway_automation_update(
     if start_date:
         try:
             start_iso = f"{start_date}T{start_time or '00:05'}"
-            start_dt = datetime.fromisoformat(start_iso).replace(tzinfo=timezone.utc)
+            start_local = datetime.fromisoformat(start_iso)
+            start_dt = start_local.replace(tzinfo=MSK_TZ).astimezone(timezone.utc)
             # Keep monthly rollover aligned with the chosen start date.
             day_of_month = start_dt.day
         except ValueError:
