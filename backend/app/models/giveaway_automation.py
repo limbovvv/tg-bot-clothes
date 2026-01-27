@@ -16,5 +16,7 @@ class GiveawayAutomationSettings(Base):
     rules_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
     required_channel: Mapped[str] = mapped_column(Text, nullable=False, default="")
     draw_offset_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_run_month: Mapped[str | None] = mapped_column(Text)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

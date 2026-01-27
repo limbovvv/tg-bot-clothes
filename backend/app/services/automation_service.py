@@ -19,6 +19,8 @@ async def get_automation_settings(session: AsyncSession) -> GiveawayAutomationSe
         rules_text="",
         required_channel="",
         draw_offset_days=0,
+        start_at=None,
+        last_run_at=None,
         updated_at=utcnow(),
     )
     session.add(settings)
@@ -35,6 +37,7 @@ async def update_automation_settings(
     rules_text: str,
     required_channel: str,
     draw_offset_days: int,
+    start_at: datetime | None,
 ) -> GiveawayAutomationSettings:
     settings = await get_automation_settings(session)
     settings.is_enabled = is_enabled
@@ -43,6 +46,7 @@ async def update_automation_settings(
     settings.rules_text = rules_text.strip()
     settings.required_channel = required_channel.strip()
     settings.draw_offset_days = max(0, min(draw_offset_days, 31))
+    settings.start_at = start_at
     settings.updated_at = utcnow()
     return settings
 
@@ -64,5 +68,6 @@ async def mark_run_month(
     session: AsyncSession, settings: GiveawayAutomationSettings, now: datetime
 ) -> None:
     settings.last_run_month = now.strftime("%Y-%m")
+    settings.last_run_at = now
     settings.updated_at = utcnow()
     await session.flush()

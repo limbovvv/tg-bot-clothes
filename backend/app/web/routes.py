@@ -98,6 +98,21 @@ def compute_next_run_at(day_of_month: int, now: datetime) -> datetime:
     return candidate
 
 
+def compute_next_run_at_with_start(
+    *,
+    day_of_month: int,
+    now: datetime,
+    start_at: datetime | None,
+    last_run_at: datetime | None,
+) -> datetime:
+    if start_at:
+        if start_at > now:
+            return start_at
+        if not last_run_at or last_run_at < start_at:
+            return start_at
+    return compute_next_run_at(day_of_month, now)
+
+
 def render(template_name: str, **context):
     template = env.get_template(template_name)
     return HTMLResponse(template.render(**context))
@@ -612,9 +627,14 @@ async def giveaway_view(
     giveaway = await get_active_giveaway(session)
     automation = await get_automation_settings(session)
     now = utcnow()
-    next_run_at = compute_next_run_at(automation.day_of_month, now)
+    next_run_at = compute_next_run_at_with_start(
+        day_of_month=automation.day_of_month,
+        now=now,
+        start_at=automation.start_at,
+        last_run_at=automation.last_run_at,
+    )
     auto_saved = request.query_params.get("auto_saved") == "1"
-    auto_overlay = automation.is_enabled and giveaway is None
+    auto_overlay = automation.is_enabled and giveaway is None and next_run_at > now
     await session.commit()
     return render(
         "giveaway.html",
@@ -626,6 +646,7 @@ async def giveaway_view(
         auto_overlay=auto_overlay,
         next_run_at_iso=next_run_at.isoformat(),
         next_run_at_label=next_run_at.strftime("%d.%m.%Y %H:%M UTC"),
+        start_at_value=automation.start_at.strftime("%Y-%m-%dT%H:%M") if automation.start_at else "",
         format_date_only=format_date_only,
         csrf=get_csrf_token(request),
     )
@@ -740,12 +761,19 @@ async def giveaway_automation_update(
     required_channel: str = Form(""),
     rules_text: str = Form(""),
     draw_offset_days: int = Form(0),
+    start_at: str = Form(""),
     csrf_token: str = Form(...),
     user: str = Depends(login_required),
     session: AsyncSession = Depends(get_session),
 ):
     verify_csrf(request, csrf_token)
     is_enabled = enabled == "on"
+    start_dt = None
+    if start_at:
+        try:
+            start_dt = datetime.fromisoformat(start_at).replace(tzinfo=timezone.utc)
+        except ValueError:
+            start_dt = None
     settings_row = await update_automation_settings(
         session,
         is_enabled=is_enabled,
@@ -754,6 +782,7 @@ async def giveaway_automation_update(
         rules_text=rules_text,
         required_channel=required_channel,
         draw_offset_days=draw_offset_days,
+        start_at=start_dt,
     )
     await log_action(
         session,

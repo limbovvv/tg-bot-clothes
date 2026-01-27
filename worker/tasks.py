@@ -295,15 +295,25 @@ async def _automation_rollover_check_async() -> None:
         if not settings_row.is_enabled:
             await session.commit()
             return
-        if now.day != settings_row.day_of_month:
-            await session.commit()
-            return
-        if not await should_run_for_month(settings_row, now):
-            await session.commit()
-            return
         if not settings_row.required_channel or not settings_row.rules_text:
             await session.commit()
             return
+
+        # If an exact start datetime is set, prefer it over day-of-month logic.
+        if settings_row.start_at:
+            if now < settings_row.start_at:
+                await session.commit()
+                return
+            if settings_row.last_run_at and settings_row.last_run_at >= settings_row.start_at:
+                await session.commit()
+                return
+        else:
+            if now.day != settings_row.day_of_month:
+                await session.commit()
+                return
+            if not await should_run_for_month(settings_row, now):
+                await session.commit()
+                return
 
         active = await get_active_giveaway(session)
         if active:
