@@ -45,7 +45,7 @@
       <button class="btn btn-primary">Сохранить настройки</button>
     </div>
   </form>
-  {% if auto_saved and automation.is_enabled %}
+  {% if auto_overlay %}
   <div id="auto-overlay" class="auto-overlay">
     <div class="auto-overlay-card">
       <div class="text-muted small mb-1">Автоматический розыгрыш</div>
@@ -60,7 +60,7 @@
   </div>
   {% endif %}
 </div>
-{% if auto_saved and automation.is_enabled %}
+{% if auto_overlay %}
 <style>
   .auto-card {
     position: relative;

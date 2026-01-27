@@ -614,6 +614,7 @@ async def giveaway_view(
     now = utcnow()
     next_run_at = compute_next_run_at(automation.day_of_month, now)
     auto_saved = request.query_params.get("auto_saved") == "1"
+    auto_overlay = automation.is_enabled and giveaway is None
     await session.commit()
     return render(
         "giveaway.html",
@@ -622,6 +623,7 @@ async def giveaway_view(
         giveaway=giveaway,
         automation=automation,
         auto_saved=auto_saved,
+        auto_overlay=auto_overlay,
         next_run_at_iso=next_run_at.isoformat(),
         next_run_at_label=next_run_at.strftime("%d.%m.%Y %H:%M UTC"),
         format_date_only=format_date_only,
