@@ -130,7 +130,6 @@ class GiveawayEditStates(StatesGroup):
 
 class BroadcastStates(StatesGroup):
     content = State()
-    segment = State()
     confirm = State()
 
 
@@ -698,81 +697,9 @@ async def broadcast_content(message: Message, state: FSMContext):
         payload_type=payload_type,
         payload_file_id=payload_file_id,
         text=text,
+        segment=BroadcastSegment.all_bot_users.value,
     )
-    await state.set_state(BroadcastStates.segment)
-    kb = InlineKeyboardBuilder()
-    kb.button(text="Всем пользователям в боте", callback_data="broadcast_segment:all_bot_users")
-    kb.button(
-        text="Всем пользователям в канале",
-        callback_data="broadcast_segment:subscribed_verified",
-    )
-    kb.button(
-        text="Одобренным в активном розыгрыше",
-        callback_data="broadcast_segment:approved_in_active_giveaway",
-    )
-    kb.button(text="Назад", callback_data="broadcast_back")
-    kb.adjust(1)
-    sent = await message.answer("Выберите сегмент:", reply_markup=kb.as_markup())
-    await state.update_data(segment_message_id=sent.message_id, segment_chat_id=sent.chat.id)
-
-
-@router.message(BroadcastStates.segment, F.text == "⬅️ Назад")
-async def broadcast_segment_back(message: Message, state: FSMContext):
-    if not await ensure_admin(message):
-        return
     data = await state.get_data()
-    chat_id = data.get("segment_chat_id")
-    message_id = data.get("segment_message_id")
-    if chat_id and message_id:
-        try:
-            await message.bot.edit_message_reply_markup(
-                chat_id=chat_id, message_id=message_id, reply_markup=None
-            )
-        except Exception:
-            pass
-    await state.set_state(BroadcastStates.content)
-    await message.answer(
-        "Отправьте контент для рассылки (текст/фото/видео/док/кружок):",
-        reply_markup=back_only_menu(),
-    )
-
-
-@router.callback_query(F.data == "broadcast_back")
-async def broadcast_back(callback, state: FSMContext):
-    await state.set_state(BroadcastStates.content)
-    data = await state.get_data()
-    chat_id = data.get("segment_chat_id")
-    message_id = data.get("segment_message_id")
-    if chat_id and message_id:
-        try:
-            await callback.message.bot.edit_message_reply_markup(
-                chat_id=chat_id, message_id=message_id, reply_markup=None
-            )
-        except Exception:
-            pass
-    await callback.message.answer(
-        "Отправьте контент для рассылки (текст/фото/видео/док/кружок):",
-        reply_markup=back_only_menu(),
-    )
-    await callback.answer()
-
-
-@router.callback_query(F.data.startswith("broadcast_segment:"))
-async def broadcast_segment_callback(callback, state: FSMContext):
-    if not await is_admin_user(callback.from_user):
-        await callback.answer()
-        return
-    segment_raw = callback.data.split(":", 1)[1]
-    if segment_raw not in {"all_bot_users", "approved_in_active_giveaway", "subscribed_verified"}:
-        await callback.answer("Неверный сегмент", show_alert=True)
-        return
-    await state.update_data(segment=segment_raw)
-    data = await state.get_data()
-    segment_labels = {
-        "all_bot_users": "Всем пользователям в боте",
-        "approved_in_active_giveaway": "Одобренным в активном розыгрыше",
-        "subscribed_verified": "Всем пользователям в канале",
-    }
     payload_labels = {
         BroadcastPayloadType.text: "Текст",
         BroadcastPayloadType.photo: "Фото",
@@ -783,66 +710,7 @@ async def broadcast_segment_callback(callback, state: FSMContext):
     preview = (
         "Превью рассылки:\n"
         f"Тип: {payload_labels.get(data['payload_type'], data['payload_type'])}\n"
-        f"Сегмент: {segment_labels.get(segment_raw, segment_raw)}"
-    )
-    payload_type = data["payload_type"]
-    if payload_type == BroadcastPayloadType.text:
-        await callback.message.answer(data["text"] or "")
-    elif payload_type == BroadcastPayloadType.photo:
-        await callback.message.answer_photo(data["payload_file_id"], caption=data.get("text"))
-    elif payload_type == BroadcastPayloadType.video:
-        await callback.message.answer_video(data["payload_file_id"], caption=data.get("text"))
-    elif payload_type == BroadcastPayloadType.document:
-        await callback.message.answer_document(data["payload_file_id"], caption=data.get("text"))
-    elif payload_type == BroadcastPayloadType.video_note:
-        await callback.message.answer_video_note(data["payload_file_id"])
-    kb = InlineKeyboardBuilder()
-    kb.button(text="Подтвердить", callback_data="broadcast_confirm")
-    kb.button(text="Отмена", callback_data="broadcast_cancel")
-    preview_msg = await callback.message.answer(preview, reply_markup=kb.as_markup())
-    await state.update_data(
-        preview_message_id=preview_msg.message_id, preview_chat_id=preview_msg.chat.id
-    )
-    await state.set_state(BroadcastStates.confirm)
-    data = await state.get_data()
-    chat_id = data.get("segment_chat_id")
-    message_id = data.get("segment_message_id")
-    if chat_id and message_id:
-        try:
-            await callback.message.bot.edit_message_reply_markup(
-                chat_id=chat_id, message_id=message_id, reply_markup=None
-            )
-        except Exception:
-            pass
-    await callback.answer()
-
-
-@router.message(BroadcastStates.segment)
-async def broadcast_segment(message: Message, state: FSMContext):
-    if not await ensure_admin(message):
-        return
-    segment_raw = message.text.strip()
-    if segment_raw not in {"all_bot_users", "approved_in_active_giveaway", "subscribed_verified"}:
-        await message.answer("Неверный сегмент")
-        return
-    await state.update_data(segment=segment_raw)
-    data = await state.get_data()
-    segment_labels = {
-        "all_bot_users": "Всем пользователям в боте",
-        "approved_in_active_giveaway": "Одобренным в активном розыгрыше",
-        "subscribed_verified": "Всем пользователям в канале",
-    }
-    payload_labels = {
-        BroadcastPayloadType.text: "Текст",
-        BroadcastPayloadType.photo: "Фото",
-        BroadcastPayloadType.video: "Видео",
-        BroadcastPayloadType.document: "Документ",
-        BroadcastPayloadType.video_note: "Кружок",
-    }
-    preview = (
-        "Превью рассылки:\n"
-        f"Тип: {payload_labels.get(data['payload_type'], data['payload_type'])}\n"
-        f"Сегмент: {segment_labels.get(segment_raw, segment_raw)}"
+        "Сегмент: Всем пользователям в боте"
     )
     payload_type = data["payload_type"]
     if payload_type == BroadcastPayloadType.text:
