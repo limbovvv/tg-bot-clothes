@@ -1,6 +1,6 @@
 import asyncio
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
@@ -258,13 +258,15 @@ async def phone_handler(message: Message, state: FSMContext):
     await message.answer(messages.ENTRY_CREATED, reply_markup=main_menu())
 
     username = message.from_user.username or "нет username"
+    msk = timezone(timedelta(hours=3))
+    created_at = datetime.now(timezone.utc).astimezone(msk).strftime("%d.%m.%Y %H:%M")
     caption = (
         f"Новая заявка #{entry.id}\n"
         f"ФИО: {fio}\n"
         f"Телефон: {phone}\n"
         f"@{username}\n"
         f"tg_id: {message.from_user.id}\n"
-        f"Время: {datetime.utcnow().isoformat()}"
+        f"Время: {created_at} МСК"
     )
     await message.bot.send_photo(
         settings.admin_group_id,
