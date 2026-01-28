@@ -337,23 +337,14 @@ async def _announce_start(giveaway: Giveaway) -> None:
         f"Название: {giveaway.title}"
     )
     if settings.public_channel:
-        # Prefer user bot for channel announcements (it is admin in the channel).
-        try:
-            async with Bot(
-                token=settings.user_bot_token,
-                default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-            ) as user_bot:
-                await user_bot.send_message(settings.public_channel, channel_text)
-        except Exception:
-            # Fallback to admin bot if user bot fails.
-            async with Bot(
-                token=settings.admin_bot_token,
-                default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-            ) as admin_bot:
-                try:
-                    await admin_bot.send_message(settings.public_channel, channel_text)
-                except Exception:
-                    pass
+        async with Bot(
+            token=settings.admin_bot_token,
+            default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        ) as admin_bot:
+            try:
+                await admin_bot.send_message(settings.public_channel, channel_text)
+            except Exception:
+                pass
     celery_app.send_task("worker.tasks.send_broadcast_text", args=[bot_text])
     admin_ids = _parse_admin_ids(settings.admin_tg_ids)
     if admin_ids:
