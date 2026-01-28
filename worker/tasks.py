@@ -1,6 +1,7 @@
 import asyncio
 import random
 from calendar import monthrange
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 
 from aiogram import Bot
@@ -9,10 +10,11 @@ from aiogram.enums import ChatMemberStatus
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from backend.app.core.config import settings
 from backend.app.core.time import utcnow
-from backend.app.db.session import SessionLocal
 from backend.app.models.broadcast import Broadcast
 from backend.app.models.entry import Entry
 from backend.app.models.giveaway import Giveaway
@@ -37,6 +39,15 @@ from backend.app.services.giveaway_service import (
 from backend.app.services.winner_service import create_winner
 from backend.app.services.user_service import mark_blocked, mark_subscribed_verified
 from worker.celery_app import celery_app
+
+
+@asynccontextmanager
+async def worker_session():
+    engine = create_async_engine(settings.database_url, poolclass=NullPool)
+    Session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async with Session() as session:
+        yield session
+    await engine.dispose()
 
 
 async def _send_payload(bot: Bot, tg_id: int, broadcast: Broadcast) -> None:
@@ -117,7 +128,7 @@ async def _send_broadcast_async(broadcast_id: int) -> None:
         token=settings.user_bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     ) as bot:
-        async with SessionLocal() as session:
+        async with worker_session() as session:
             broadcast = await session.get(Broadcast, broadcast_id)
             if not broadcast:
                 return
@@ -163,7 +174,7 @@ async def _send_broadcast_text_async(text: str) -> None:
         token=settings.user_bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     ) as bot:
-        async with SessionLocal() as session:
+        async with worker_session() as session:
             broadcast = Broadcast(
                 created_by=0,
                 segment=BroadcastSegment.all_bot_users,
@@ -217,7 +228,7 @@ async def _send_broadcast_text_exclude_async(
         token=settings.user_bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     ) as bot:
-        async with SessionLocal() as session:
+        async with worker_session() as session:
             broadcast = Broadcast(
                 created_by=0,
                 segment=BroadcastSegment.all_bot_users,
@@ -417,7 +428,7 @@ def automation_rollover_check() -> None:
 
 async def _automation_rollover_check_async() -> None:
     now = utcnow()
-    async with SessionLocal() as session:
+    async with worker_session() as session:
         settings_row = await get_automation_settings(session)
         if not settings_row.is_enabled:
             await session.commit()
