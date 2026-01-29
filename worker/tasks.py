@@ -366,9 +366,8 @@ async def _announce_start(giveaway: Giveaway) -> None:
         "🍀 Удачи! И спасибо, что вы с нами!"
     )
     bot_text = (
-        "🎉 Розыгрыш начался!\n"
-        f"Смотри условия в канале {channel_ref}.\n"
-        "Нажми «Участвовать» в боте, когда всё готово."
+        "🎉 Новый розыгрыш начался!\n"
+        "Успей принять участие!"
     )
     admin_text = (
         "✅ Автоматический розыгрыш запущен.\n"
@@ -377,11 +376,11 @@ async def _announce_start(giveaway: Giveaway) -> None:
     )
     if settings.public_channel:
         async with Bot(
-            token=settings.admin_bot_token,
+            token=settings.user_bot_token,
             default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-        ) as admin_bot:
+        ) as user_bot:
             try:
-                await admin_bot.send_message(settings.public_channel, channel_text)
+                await user_bot.send_message(settings.public_channel, channel_text)
             except Exception:
                 pass
     celery_app.send_task("worker.tasks.send_broadcast_text", args=[bot_text])
@@ -432,11 +431,11 @@ async def _draw_and_notify(active: Giveaway, session) -> dict:
     )
     if public_text and settings.public_channel:
         async with Bot(
-            token=settings.admin_bot_token,
+            token=settings.user_bot_token,
             default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-        ) as admin_bot:
+        ) as user_bot:
             try:
-                await admin_bot.send_message(settings.public_channel, public_text)
+                await user_bot.send_message(settings.public_channel, public_text)
             except Exception:
                 pass
     async with Bot(
