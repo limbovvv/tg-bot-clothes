@@ -391,7 +391,12 @@ async def _draw_and_notify(active: Giveaway, session) -> dict:
     await create_winner(session, giveaway_id=active.id, entry_id=entry.id)
     winner_username = user.username or ""
     winner_tg_id = user.tg_id
-    public_text = f"Победитель: @{winner_username}" if winner_username else None
+    public_text = (
+        "🎉🌟 ПОБЕДИТЕЛЬ РОЗЫГРЫША! 🌟🎉\n\n"
+        f"🏆 Победитель: @{winner_username}"
+        if winner_username
+        else None
+    )
     broadcast_text = (
         f"🎉 Розыгрыш завершен!\nПобедитель: @{winner_username}\n"
         "Новый розыгрыш уже начался."

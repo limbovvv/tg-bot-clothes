@@ -980,7 +980,10 @@ async def winners_draw(
             username = user_data.username
             if not username:
                 continue
-            message_text = f"Победитель: @{username}"
+            message_text = (
+                "🎉🌟 ПОБЕДИТЕЛЬ РОЗЫГРЫША! 🌟🎉\n\n"
+                f"🏆 Победитель: @{username}"
+            )
             await public_bot.send_message(settings.public_channel, message_text)
             celery_app.send_task("worker.tasks.send_broadcast_text", args=[message_text])
     return RedirectResponse(url="/admin/winners", status_code=302)

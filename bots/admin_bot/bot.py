@@ -923,7 +923,10 @@ async def draw_confirm(callback, state: FSMContext):
             if not username:
                 continue
             winner_tg_ids.append(user.tg_id)
-            message_text = f"Победитель: @{username}"
+            message_text = (
+                "🎉🌟 ПОБЕДИТЕЛЬ РОЗЫГРЫША! 🌟🎉\n\n"
+                f"🏆 Победитель: @{username}"
+            )
             await public_bot.send_message(settings.public_channel, message_text)
             celery_app.send_task("worker.tasks.send_broadcast_text", args=[message_text])
             await public_bot.send_message(
