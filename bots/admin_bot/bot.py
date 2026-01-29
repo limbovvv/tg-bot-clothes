@@ -653,7 +653,7 @@ async def stats_handler(message: Message):
         ).scalar()
     await message.answer(
         f"Активный: {giveaway.title}\n"
-        f"Pending: {pending}, Approved: {approved}, Rejected: {rejected}\n"
+        f"На проверке: {pending}, Подтверждено: {approved}, Отклонено: {rejected}\n"
         f"Всего розыгрышей: {giveaways_total}\n"
         f"Всего пользователей: {users_total}"
     )
