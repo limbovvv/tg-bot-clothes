@@ -279,7 +279,9 @@ async def dashboard(
     latest_ok = latest_broadcast.sent_ok if latest_broadcast else 0
     latest_fail = latest_broadcast.sent_fail if latest_broadcast else 0
     latest_broadcast_at = (
-        latest_broadcast.created_at if latest_broadcast else None
+        latest_broadcast.created_at.astimezone(MSK_TZ)
+        if latest_broadcast and latest_broadcast.created_at
+        else None
     )
     return render(
         "dashboard.html",
