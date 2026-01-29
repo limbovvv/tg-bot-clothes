@@ -271,12 +271,16 @@ async def dashboard(
                 )
             )
         ).scalar()
-    sent_ok = (
-        await session.execute(select(func.coalesce(func.sum(Broadcast.sent_ok), 0)))
-    ).scalar()
-    sent_fail = (
-        await session.execute(select(func.coalesce(func.sum(Broadcast.sent_fail), 0)))
-    ).scalar()
+    latest_broadcast = (
+        await session.execute(
+            select(Broadcast).order_by(Broadcast.created_at.desc()).limit(1)
+        )
+    ).scalar_one_or_none()
+    latest_ok = latest_broadcast.sent_ok if latest_broadcast else 0
+    latest_fail = latest_broadcast.sent_fail if latest_broadcast else 0
+    latest_broadcast_at = (
+        latest_broadcast.created_at if latest_broadcast else None
+    )
     return render(
         "dashboard.html",
         request=request,
@@ -287,8 +291,9 @@ async def dashboard(
         pending=pending,
         approved=approved,
         rejected=rejected,
-        sent_ok=sent_ok,
-        sent_fail=sent_fail,
+        sent_ok=latest_ok,
+        sent_fail=latest_fail,
+        latest_broadcast_at=latest_broadcast_at,
         format_date_only=format_date_only,
         csrf=get_csrf_token(request),
     )

@@ -24,6 +24,9 @@
       <div class="card-body">
         <div class="text-muted">Рассылки</div>
         <div class="fs-6">OK: {{ sent_ok }} | Fail: {{ sent_fail }}</div>
+        <div class="small text-muted">
+          Последняя: {{ latest_broadcast_at.strftime('%d.%m.%Y %H:%M') if latest_broadcast_at else '-' }}
+        </div>
       </div>
     </div>
   </div>

@@ -35,6 +35,7 @@ async def create_giveaway(
         created_at=utcnow(),
     )
     session.add(giveaway)
+    await session.flush()
     return giveaway
 
 
