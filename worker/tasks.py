@@ -16,6 +16,7 @@ from sqlalchemy.pool import NullPool
 from backend.app.core.config import settings
 from backend.app.core.time import utcnow
 from backend.app.models.broadcast import Broadcast
+from backend.app.models.admin_user import AdminUser
 from backend.app.models.entry import Entry
 from backend.app.models.giveaway import Giveaway
 from backend.app.models.enums import (
@@ -318,17 +319,17 @@ def _month_run_at(day_of_month: int, now: datetime) -> datetime:
     return candidate
 
 
-def _parse_admin_ids(raw: str) -> list[int]:
-    ids: list[int] = []
-    for part in (raw or "").split(","):
-        part = part.strip()
-        if not part:
-            continue
-        try:
-            ids.append(int(part))
-        except ValueError:
-            continue
-    return ids
+async def _fetch_admin_tg_ids(session) -> list[int]:
+    rows = (
+        await session.execute(
+            select(User.tg_id)
+            .select_from(User)
+            .join(AdminUser, AdminUser.username == User.username)
+            .where(AdminUser.is_active.is_(True), User.is_blocked.is_(False))
+            .distinct()
+        )
+    ).all()
+    return [row[0] for row in rows]
 
 
 async def _announce_start(giveaway: Giveaway) -> None:
@@ -357,7 +358,8 @@ async def _announce_start(giveaway: Giveaway) -> None:
             except Exception:
                 pass
     celery_app.send_task("worker.tasks.send_broadcast_text", args=[bot_text])
-    admin_ids = _parse_admin_ids(settings.admin_tg_ids)
+    async with worker_session() as session:
+        admin_ids = await _fetch_admin_tg_ids(session)
     if admin_ids:
         async with Bot(
             token=settings.admin_bot_token,
